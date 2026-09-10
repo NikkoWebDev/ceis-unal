@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
-import { Send, MapPin, ChevronRight, Sparkles, ArrowLeft, Info, Moon, Sun, Eye, EyeOff, ExternalLink, Layers } from 'lucide-react';
+import { Send, MapPin, Sparkles, ArrowLeft, Info, Moon, Sun, Eye, EyeOff, ExternalLink, Layers, GraduationCap, Lightbulb, Users } from 'lucide-react';
 
 /* ================= HOOKS ================= */
 
@@ -19,22 +19,23 @@ function useScrollProgress() {
 
 function useScrollAnimation(threshold = 0.15) {
   const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || visible) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          el.classList.add('is-visible');
-          observer.unobserve(el);
+          setVisible(true);
+          observer.disconnect();
         }
       },
       { threshold, rootMargin: '0px 0px -40px 0px' }
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [threshold]);
-  return ref;
+  }, [threshold, visible]);
+  return [ref, visible];
 }
 
 function useParallax(speed = 0.3) {
@@ -112,13 +113,13 @@ export default function CEISLandingPage() {
             {currentView === 'home' && (
               <>
                 <a href="#quienes-somos" onClick={(e) => handleNavClick(e, 'quienes-somos')} className={`transition-colors ${darkMode ? 'text-[#aeb8a4] hover:text-[#f0eee2]' : 'text-[#907A67] hover:text-[#191114]'}`}>Quiénes somos</a>
-                <a href="#objetivo" onClick={(e) => handleNavClick(e, 'objetivo')} className={`transition-colors ${darkMode ? 'text-[#aeb8a4] hover:text-[#f0eee2]' : 'text-[#907A67] hover:text-[#191114]'}`}>Nuestro Objetivo</a>
-                <a href="#espacio-interactivo" onClick={(e) => handleNavClick(e, 'espacio-interactivo')} className={`transition-colors ${darkMode ? 'text-[#aeb8a4] hover:text-[#f0eee2]' : 'text-[#907A67] hover:text-[#191114]'}`}>Comisiones y Consejo</a>
+                    <a href="#objetivo" onClick={(e) => handleNavClick(e, 'objetivo')} className={`transition-colors ${darkMode ? 'text-[#aeb8a4] hover:text-[#f0eee2]' : 'text-[#907A67] hover:text-[#191114]'}`}>Nuestro Objetivo</a>
+                    <a href="#que-hacemos" onClick={(e) => handleNavClick(e, 'que-hacemos')} className={`transition-colors ${darkMode ? 'text-[#aeb8a4] hover:text-[#f0eee2]' : 'text-[#907A67] hover:text-[#191114]'}`}>Qué hacemos</a>
               </>
             )}
 
             <button
-              onClick={() => setCurrentView('malla')}
+              onClick={() => { setCurrentView('malla'); window.scrollTo({ top: 0 }); }}
               className={`transition-colors font-medium bg-transparent border-none cursor-pointer text-sm ${
                 currentView === 'malla'
                   ? (darkMode ? 'text-[#c08a2e] font-bold underline' : 'text-[#3B908D] font-bold underline')
@@ -162,15 +163,16 @@ export default function CEISLandingPage() {
       <main className="flex-grow">
         {currentView === 'home' ? (
           <>
-            <HeroSection />
+            <HeroSection onVerMalla={() => { setCurrentView('malla'); window.scrollTo({ top: 0 }); }} />
             <QuienesSomosSection darkMode={darkMode} />
             <ObjetivoSection darkMode={darkMode} />
+            <PilaresSection darkMode={darkMode} />
           </>
         ) : (
           <div className="py-12 w-full animate-fadeIn">
             <div className="max-w-[1400px] mx-auto px-7">
               <button
-                onClick={() => setCurrentView('home')}
+                onClick={() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`inline-flex items-center gap-2 text-sm font-sans font-semibold mb-8 bg-transparent border-none cursor-pointer p-0 transition-colors ${
                   darkMode ? 'text-[#82B475] hover:underline' : 'text-[#3B908D] hover:underline'
                 }`}
@@ -206,11 +208,11 @@ export default function CEISLandingPage() {
 
 /* ================= SECCIÓN HERO ================= */
 
-function HeroSection() {
+function HeroSection({ onVerMalla }) {
   const parallaxOffset = useParallax(0.25);
   const { rotation, opacity } = useHeroRotation();
-  const titleRef = useScrollAnimation(0.1);
-  const subtitleRef = useScrollAnimation(0.1);
+  const [titleRef, titleVisible] = useScrollAnimation(0.1);
+  const [subtitleRef, subtitleVisible] = useScrollAnimation(0.1);
 
   return (
     <section className="bg-gradient-to-br from-[#18514A] via-[#282F3A] to-[#191114] text-[#F6EEE8] pt-28 pb-20 relative overflow-hidden" id="inicio">
@@ -220,7 +222,7 @@ function HeroSection() {
         style={{ transform: `translateY(${parallaxOffset}px)` }}
       />
       <div className="max-w-[1120px] mx-auto px-7 grid grid-cols-1 md:grid-cols-[1.2fr_0.8fr] gap-12 items-center relative z-10">
-        <div ref={titleRef} className="animate-in-fade-up">
+        <div ref={titleRef} className={`animate-in-fade-up${titleVisible ? ' is-visible' : ''}`}>
           <span className="inline-flex items-center gap-2 font-sans text-[13px] text-[#82B475] border border-[#82B475]/30 rounded-full px-4 py-1.5 mb-6 bg-[#82B475]/10">
             <Sparkles size={14} /> Facultad de Ingeniería, Universidad Nacional de Colombia
           </span>
@@ -228,28 +230,21 @@ function HeroSection() {
             Consejo Estudiantil de Ingeniería de Sistemas
           </h1>
           <p className="font-serif text-lg text-[#F6EEE8]/80 mt-5 max-w-[48ch] leading-relaxed">
-            La voz organizada de nuestra comunidad. Espacio de representación, desarrollo de soluciones y apoyo mutuo entre estudiantes de ingeniería de Sistemas.
+            Un espacio de construcción estudiantil — de estudiantes, por y para estudiantes — donde tejemos representación, soluciones y apoyo mutuo en Ingeniería de Sistemas.
           </p>
           <div className="flex flex-wrap gap-4 mt-8 font-sans">
-            <a
-              href="#espacio-interactivo"
-              onClick={(e) => { e.preventDefault(); smoothScrollTo('espacio-interactivo'); }}
-              className="btn-magnetic inline-flex items-center gap-2 text-sm font-semibold px-6 py-3 rounded-xl text-white bg-gradient-to-r from-[#3B908D] to-[#82B475] shadow-lg shadow-[#3B908D]/20"
-            >
-              Explorar secciones <ChevronRight size={16} />
-            </a>
             <button
-              onClick={() => setCurrentView('malla')}
-              className="btn-magnetic inline-flex items-center gap-2 text-sm font-semibold px-6 py-3 rounded-xl border border-[#F6EEE8]/20 text-[#F6EEE8] hover:bg-[#F6EEE8]/10 transition-colors cursor-pointer"
+              onClick={onVerMalla}
+              className="btn-magnetic inline-flex items-center gap-2 text-sm font-semibold px-6 py-3 rounded-xl text-white bg-gradient-to-r from-[#3B908D] to-[#82B475] shadow-lg shadow-[#3B908D]/20 cursor-pointer border-none"
             >
-              Ver Malla Curricular
+              Ver Malla Curricular <GraduationCap size={16} />
             </button>
           </div>
         </div>
 
         <div
           ref={subtitleRef}
-          className="flex justify-center animate-in-scale"
+          className={`flex justify-center animate-in-scale${subtitleVisible ? ' is-visible' : ''}`}
           style={{ opacity }}
         >
           <div
@@ -269,23 +264,23 @@ function HeroSection() {
 /* ================= SECCIÓN QUIÉNES SOMOS ================= */
 
 function QuienesSomosSection({ darkMode }) {
-  const textRef = useScrollAnimation(0.15);
-  const quoteRef = useScrollAnimation(0.15);
+  const [textRef, textVisible] = useScrollAnimation(0.15);
+  const [quoteRef, quoteVisible] = useScrollAnimation(0.15);
 
   return (
     <section id="quienes-somos" className={`py-20 border-b transition-colors duration-300 ${darkMode ? 'border-[#f0eee2]/10' : 'border-[#907A67]/20'}`}>
       <div className="max-w-[1120px] mx-auto px-7 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-        <div ref={textRef} className="animate-in-fade-left">
+        <div ref={textRef} className={`animate-in-fade-left${textVisible ? ' is-visible' : ''}`}>
           <p className={`font-sans text-[13.5px] font-semibold mb-3 tracking-wide uppercase ${darkMode ? 'text-[#82B475]' : 'text-[#3B908D]'}`}>Quiénes somos</p>
           <h2 className={`font-sans text-3xl font-bold tracking-tight mb-5 ${darkMode ? 'text-[#f0eee2]' : 'text-[#191114]'}`}>Un espacio de construcción estudiantil</h2>
           <p className={`text-[17px] leading-relaxed mb-4 ${darkMode ? 'text-[#f0eee2]/80' : 'text-[#191114]/80'}`}>
-            El CEIS es la instancia de organización estudiantil del programa curricular de Ingeniería de Sistemas y Computación en la Universidad Nacional de Colombia.
+            El CEIS es el espacio de construcción estudiantil del programa de Ingeniería de Sistemas y Computación de la Universidad Nacional de Colombia, sede Bogotá: una organización de estudiantes, por y para estudiantes.
           </p>
           <p className={`text-[17px] leading-relaxed ${darkMode ? 'text-[#f0eee2]/80' : 'text-[#191114]/80'}`}>
-            Actuamos como un puente dinámico entre las necesidades del estudiantado y la dirección de la facultad, impulsando iniciativas autogestionadas y colaborativas.
+            Frente a las problemáticas y necesidades de la vida universitaria, nos organizamos y colaboramos activamente como comunidad para visibilizar los retos, proponer soluciones y articular los esfuerzos del estudiantado.
           </p>
         </div>
-        <div ref={quoteRef} className={`animate-in-fade-right p-8 rounded-2xl border shadow-sm relative transition-colors duration-300 ${darkMode ? 'bg-[#152218] border-[#f0eee2]/15' : 'bg-[#E6E2D0]/50 border-[#907A67]/20'}`}>
+        <div ref={quoteRef} className={`${quoteVisible ? 'is-visible ' : ''}animate-in-fade-right p-8 rounded-2xl border shadow-sm relative transition-colors duration-300 ${darkMode ? 'bg-[#152218] border-[#f0eee2]/15' : 'bg-[#E6E2D0]/50 border-[#907A67]/20'}`}>
           <div className="absolute -top-4 -left-4 w-8 h-8 rounded-full bg-[#3B908D] flex items-center justify-center text-white font-bold">"</div>
           <p className={`font-serif italic text-lg leading-relaxed ${darkMode ? 'text-[#f0eee2]' : 'text-[#191114]'}`}>
             Las soluciones a nuestros retos académicos y de bienestar surgen cuando nos organizamos y colaboramos activamente como comunidad.
@@ -300,25 +295,83 @@ function QuienesSomosSection({ darkMode }) {
 /* ================= SECCIÓN OBJETIVO ================= */
 
 function ObjetivoSection({ darkMode }) {
-  const ref = useScrollAnimation(0.15);
+  const [ref, visible] = useScrollAnimation(0.15);
 
   return (
     <section id="objetivo" className={`py-20 border-b transition-colors duration-300 ${darkMode ? 'bg-[#152218]/40 border-[#f0eee2]/10' : 'bg-[#E6E2D0]/30 border-[#907A67]/25'}`}>
       <div className="max-w-[1120px] mx-auto px-7 text-center">
         <p className={`font-sans text-[13.5px] font-semibold mb-3 tracking-wide uppercase ${darkMode ? 'text-[#82B475]' : 'text-[#3B908D]'}`}>Nuestra Brújula</p>
         <h2 className={`font-sans text-3xl md:text-4xl font-bold tracking-tight mb-8 ${darkMode ? 'text-[#f0eee2]' : 'text-[#191114]'}`}>Objetivo Principal</h2>
-        <div ref={ref} className={`animate-in-scale max-w-3xl mx-auto p-8 md:p-12 rounded-2xl shadow-md relative border transition-colors duration-300 ${
+        <div ref={ref} className={`${visible ? 'is-visible ' : ''}animate-in-scale max-w-3xl mx-auto p-8 md:p-12 rounded-2xl shadow-md relative border transition-colors duration-300 ${
           darkMode ? 'bg-[#152218] border-[#f0eee2]/20 text-[#f0eee2]' : 'bg-[#F6EEE8] border-[#907A67]/30 text-[#191114]'
         }`}>
           <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-gradient-to-r from-[#3B908D] to-[#82B475] flex items-center justify-center text-white shadow-md">
             <TargetIcon />
           </div>
           <p className="text-xl md:text-2xl font-serif leading-relaxed mt-2">
-            "Plantear y desarrollar soluciones o acciones para las necesidades de los estudiantes de Ingeniería de Sistemas dentro de nuestro alcance como estudiantes y apoyándonos de otros estamentos e iniciativas de estudiantes y de la universidad."
+            "Proponer y ejecutar soluciones para atender las necesidades de los estudiantes de Ingeniería de Sistemas — y, cuando sea posible, apoyar a otras disciplinas — articulando esfuerzos con iniciativas estudiantiles, estamentos y la universidad."
           </p>
+          <span className={`block mt-4 font-sans text-xs font-semibold tracking-wider uppercase ${darkMode ? 'text-[#82B475]' : 'text-[#3B908D]'}`}>— Objetivo del Consejo</span>
         </div>
       </div>
     </section>
+  );
+}
+
+/* ================= SECCIÓN QUÉ HACEMOS ================= */
+
+function PilaresSection({ darkMode }) {
+  const [headerRef, headerVisible] = useScrollAnimation(0.15);
+  const pilares = [
+    {
+      icon: <Eye size={22} />,
+      title: 'Visibilizar',
+      text: 'Visibilizamos las problemáticas académicas, personales y de bienestar que surgen durante la carrera, para que ninguna voz se quede sin escuchar.',
+    },
+    {
+      icon: <Lightbulb size={22} />,
+      title: 'Proponer soluciones',
+      text: 'Convertimos las necesidades en propuestas y acciones concretas: apoyo mutuo, iniciativas y soluciones construidas activamente en comunidad.',
+    },
+    {
+      icon: <Users size={22} />,
+      title: 'Articular esfuerzos',
+      text: 'Articulamos esfuerzos con iniciativas estudiantiles, estamentos y la universidad para que las soluciones lleguen más lejos.',
+    },
+  ];
+
+  return (
+    <section id="que-hacemos" className={`py-20 border-b transition-colors duration-300 ${darkMode ? 'border-[#f0eee2]/10' : 'border-[#907A67]/20'}`}>
+      <div className="max-w-[1120px] mx-auto px-7">
+        <div ref={headerRef} className={`animate-in-fade-up text-center mb-12${headerVisible ? ' is-visible' : ''}`}>
+          <p className={`font-sans text-[13.5px] font-semibold mb-3 tracking-wide uppercase ${darkMode ? 'text-[#82B475]' : 'text-[#3B908D]'}`}>Qué hacemos</p>
+          <h2 className={`font-sans text-3xl md:text-4xl font-bold tracking-tight ${darkMode ? 'text-[#f0eee2]' : 'text-[#191114]'}`}>Un espacio creado por y para estudiantes</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {pilares.map((pilar, i) => (
+            <PilarCard key={pilar.title} {...pilar} index={i} darkMode={darkMode} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PilarCard({ icon, title, text, index, darkMode }) {
+  const [ref, visible] = useScrollAnimation(0.15);
+  return (
+    <div
+      ref={ref}
+      className={`${visible ? 'is-visible ' : ''}animate-in-fade-up stagger-${index + 1} p-7 rounded-2xl border shadow-sm transition-colors duration-300 ${
+        darkMode ? 'bg-[#152218] border-[#f0eee2]/15' : 'bg-[#E6E2D0]/50 border-[#907A67]/20'
+      }`}
+    >
+      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#3B908D] to-[#82B475] flex items-center justify-center text-white shadow-md mb-5">
+        {icon}
+      </div>
+      <h3 className={`font-sans text-xl font-bold mb-3 ${darkMode ? 'text-[#f0eee2]' : 'text-[#191114]'}`}>{title}</h3>
+      <p className={`text-[15.5px] leading-relaxed ${darkMode ? 'text-[#f0eee2]/75' : 'text-[#191114]/75'}`}>{text}</p>
+    </div>
   );
 }
 
@@ -347,9 +400,9 @@ function ContactoSection() {
 }
 
 function SectionHeader({ label, title }) {
-  const ref = useScrollAnimation(0.15);
+  const [ref, visible] = useScrollAnimation(0.15);
   return (
-    <div ref={ref} className="animate-in-fade-up mb-10">
+    <div ref={ref} className={`animate-in-fade-up mb-10${visible ? ' is-visible' : ''}`}>
       <p className="font-sans text-[13.5px] text-[#82B475] font-semibold mb-3 tracking-wide uppercase">{label}</p>
       <h2 className="font-sans text-3xl font-bold">{title}</h2>
     </div>
@@ -357,11 +410,11 @@ function SectionHeader({ label, title }) {
 }
 
 function ContactCard({ icon, label, value, href, external, index }) {
-  const ref = useScrollAnimation(0.1);
+  const [ref, visible] = useScrollAnimation(0.1);
   return (
     <div
       ref={ref}
-      className={`animate-in-fade-up stagger-${index + 1} contact-card-hover flex items-center gap-4 bg-[#191114]/50 p-5 rounded-xl border border-[#907A67]/20`}
+      className={`${visible ? 'is-visible ' : ''}animate-in-fade-up stagger-${index + 1} contact-card-hover flex items-center gap-4 bg-[#191114]/50 p-5 rounded-xl border border-[#907A67]/20`}
     >
       <div className="w-12 h-12 rounded-lg bg-[#3B908D]/20 border border-[#3B908D]/40 flex items-center justify-center text-[#82B475] shrink-0">
         {icon}
