@@ -1,0 +1,196 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+const posts = [
+  {
+    estado: 'Resuelta',
+    tema: 'Duda académica',
+    respuestas: 5,
+    fecha: '10 de sept de 2026',
+    titulo: 'Como cancelo semestre',
+    cuerpo: 'Me equivo de carrera, la universidad en las películas no son así, quién en Jason y PQ lo debo traer',
+    autor: 'Jo_aleph_0',
+    nombre: 'Joan Sebastian Rivera Barajas',
+    color: '#18514A',
+  },
+  {
+    estado: 'Abierta',
+    tema: 'Otro',
+    respuestas: 1,
+    fecha: '10 de sept de 2026',
+    titulo: 'Reporten bugs porfavor',
+    cuerpo: 'test porque carajos tengo que poner 20 letras para una descripcion',
+    autor: 'Ansukic',
+    nombre: 'Luis Alejandro Sanchez Moreno',
+    color: '#2E5E8C',
+  },
+  {
+    estado: 'Abierta',
+    tema: 'Otro',
+    respuestas: 6,
+    fecha: '10 de sept de 2026',
+    titulo: '¿Cuándo cumplen años?',
+    cuerpo: 'Para lanzarles huevos y harina (no volvemos a intentar hacer celebraciones sorpresa, porfa y gracias)',
+    autor: 'CCarito',
+    nombre: 'Carolina Ramirez Hernandez',
+    color: '#B8860B',
+  },
+  {
+    estado: 'Abierta',
+    tema: 'Otro',
+    respuestas: 7,
+    fecha: '10 de sept de 2026',
+    titulo: '¿Deberian quitar FEM de la malla? Solo razones serias o funa',
+    cuerpo: '¿Estamos cada día siendo menos Ingeniería?¿Algún día tendremos facultad de Computación?',
+    autor: 'CCarito',
+    nombre: 'Carolina Ramirez Hernandez',
+    color: '#B8860B',
+  },
+  {
+    estado: 'Abierta',
+    tema: 'Otro',
+    respuestas: 2,
+    fecha: '10 de sept de 2026',
+    titulo: 'Fue realmente justo/beneficioso el nuevo método de inscripción',
+    cuerpo: 'Pese a mitigar en algo el efecto mateo y contrariar en algo ver electivas fáciles consideran que es bueno para personas con mayor avance que dejaron materias atrás y por tanto tienen una peor inscripción',
+    autor: 'Jo_aleph_0',
+    nombre: 'Joan Sebastian Rivera Barajas',
+    color: '#18514A',
+  },
+  {
+    estado: 'Abierta',
+    tema: 'Otro',
+    respuestas: 5,
+    fecha: '10 de sept de 2026',
+    titulo: 'Confiesen quienes se van a lanzar para repres',
+    cuerpo: 'Pros y contras de ser repres, repre Daniel cuentanos el lado oscuro de la representación',
+    autor: 'CCarito',
+    nombre: 'Carolina Ramirez Hernandez',
+    color: '#B8860B',
+  },
+  {
+    estado: 'Abierta',
+    tema: 'Otro',
+    respuestas: 4,
+    fecha: '10 de sept de 2026',
+    titulo: 'Decanatura de ingeniería',
+    cuerpo: 'Charlemos sobre los candidatos, ¿qué propuestas gustan?¿cuáles no agradan?¿el CSU respetará la consulta?¿tenemos esperanza?',
+    autor: 'CCarito',
+    nombre: 'Carolina Ramirez Hernandez',
+    color: '#B8860B',
+  },
+  {
+    estado: 'Abierta',
+    tema: 'Otro',
+    respuestas: 4,
+    fecha: '10 de sept de 2026',
+    titulo: '¿será esta la mejor pagina de la Universidad Nacional de Colombia?',
+    cuerpo: 'solo se que el SIA es una mrd',
+    autor: 'sgryss',
+    nombre: 'Samuel Esteban Jossa Soliz',
+    color: '#7A4E8C',
+  },
+];
+
+const iniciales = (nombre) =>
+  nombre
+    .split(' ')
+    .filter((p) => p.length > 2)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase();
+---
+
+<Base
+  title="Foro de Preguntas | CEIS UNAL"
+  description="Foro de preguntas y respuestas de la comunidad CEIS: las dudas resueltas quedan como referencia para toda la comunidad. Solo cuentas @unal.edu.co pueden participar."
+>
+  <Nav ruta="foro" />
+  <main class="relative pt-32 min-h-[80vh] overflow-hidden">
+    <div class="blob w-[420px] h-[420px] left-1/2 -translate-x-1/2 top-0" style="background: var(--glow-1)" aria-hidden="true"></div>
+    <div class="blob w-[380px] h-[380px] -left-40 top-1/3" style="background: var(--glow-2)" aria-hidden="true"></div>
+    <div class="relative max-w-[1120px] mx-auto px-5 md:px-7 py-10">
+      <div class="reveal max-w-2xl mx-auto text-center mb-12">
+        <p class="font-sans text-[13px] font-semibold tracking-[0.2em] uppercase mb-4" style="color: var(--acento)">Comunidad</p>
+        <h1 class="font-serif text-4xl md:text-5xl tracking-tight mb-6" style="color: var(--fg)">Foro de <em class="texto-grad">preguntas</em></h1>
+        <p class="text-[17px] leading-relaxed" style="color: color-mix(in srgb, var(--fg) 75%, transparent)">
+          Pregunta, responde y consulta: las dudas resueltas quedan como referencia para toda la comunidad.
+          Solo cuentas <span class="font-semibold" style="color: var(--fg)">@unal.edu.co</span> pueden participar.
+        </p>
+      </div>
+
+      <!-- compositor -->
+      <div class="reveal glass-strong rounded-3xl p-6 mb-8">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="w-10 h-10 rounded-full flex items-center justify-center font-sans font-bold text-sm shrink-0"
+            style="background: linear-gradient(135deg, var(--color-unal), var(--color-unal-claro)); color: #fff">N</span>
+          <p class="text-sm" style="color: var(--fg-suave)">
+            Publicas como <span class="font-semibold" style="color: var(--fg)">nikko.dev</span>
+            <span class="mx-1.5" style="color: var(--linea)">·</span>
+            <span class="link-editorial font-semibold" style="color: var(--acento)">cambiar apodo</span>
+          </p>
+        </div>
+        <textarea rows="3" disabled
+          class="w-full resize-none rounded-2xl px-4 py-3 text-[15px] font-sans outline-none disabled:opacity-60"
+          style="background: color-mix(in srgb, var(--card-solid) 55%, transparent); border: 1px solid var(--linea); color: var(--fg)"
+          placeholder="Escribe tu pregunta para la comunidad..."></textarea>
+        <div class="mt-4 flex items-center justify-between gap-4">
+          <p class="text-xs" style="color: var(--fg-suave)">Vista previa estática — el foro real conecta con Google y la base de datos.</p>
+          <button disabled
+            class="text-sm font-semibold px-5 py-2.5 rounded-2xl disabled:opacity-50 transition-all duration-300"
+            style="background: linear-gradient(135deg, var(--color-unal), var(--color-unal-claro)); color: #fff">Nueva pregunta</button>
+        </div>
+      </div>
+
+      <!-- barra de filtros -->
+      <div class="reveal flex flex-wrap items-center justify-between gap-4 mb-6">
+        <h2 class="font-serif text-2xl tracking-tight" style="color: var(--fg)">Preguntas</h2>
+        <div class="flex items-center gap-3 font-sans text-sm">
+          <span class="glass rounded-xl px-4 py-2 flex items-center gap-2" style="color: var(--fg)">
+            Tema: <strong>Todo</strong>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </span>
+          <span class="glass rounded-xl px-4 py-2 flex items-center gap-2" style="color: var(--fg)">
+            Orden: <strong>Recientes</strong>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </span>
+        </div>
+      </div>
+
+      <!-- lista de posts -->
+      <div class="flex flex-col gap-4">
+        {posts.map((p) => (
+          <article class="reveal glass glass-hover rounded-3xl p-6 group">
+            <div class="flex flex-wrap items-center gap-2 mb-3 font-sans text-xs">
+              <span class="px-2.5 py-1 rounded-full font-semibold"
+                style={p.estado === 'Resuelta'
+                  ? 'background: color-mix(in srgb, #1B7A4B 15%, transparent); color: #1B7A4B; border: 1px solid color-mix(in srgb, #1B7A4B 35%, transparent)'
+                  : 'background: color-mix(in srgb, #B8860B 15%, transparent); color: #B8860B; border: 1px solid color-mix(in srgb, #B8860B 35%, transparent)'}>{p.estado}</span>
+              <span class="px-2.5 py-1 rounded-full" style="background: color-mix(in srgb, var(--acento) 10%, transparent); color: var(--acento); border: 1px solid var(--linea)">{p.tema}</span>
+              <span class="ml-auto" style="color: var(--fg-suave)">{p.respuestas} respuestas · {p.fecha}</span>
+            </div>
+            <h3 class="font-serif text-xl md:text-2xl tracking-tight mb-2 group-hover:underline decoration-2 underline-offset-4 transition-colors" style="color: var(--fg)">{p.titulo}</h3>
+            <p class="text-[15px] leading-relaxed mb-5" style="color: color-mix(in srgb, var(--fg) 75%, transparent)">{p.cuerpo}</p>
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 rounded-full flex items-center justify-center font-sans font-bold text-xs shrink-0" style={`background: ${p.color}; color: #fff`}>{iniciales(p.nombre)}</span>
+              <div class="text-sm leading-tight">
+                <p class="font-semibold" style="color: var(--fg)">{p.autor}</p>
+                <p class="text-xs" style="color: var(--fg-suave)">{p.nombre}</p>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <p class="mt-10 text-sm text-center" style="color: var(--fg-suave)">
+        Mientras tanto, únete a la
+        <a href="https://chat.whatsapp.com/CoKtYbkvYjgLfLmVsHV1f8" target="_blank" rel="noopener" class="link-editorial font-semibold" style="color: var(--acento)">comunidad de WhatsApp</a>
+        o escríbenos a <a href="mailto:ceisunal@gmail.com" class="link-editorial font-semibold" style="color: var(--acento)">ceisunal@gmail.com</a>.
+      </p>
+    </div>
+  </main>
+  <Footer />
+</Base>

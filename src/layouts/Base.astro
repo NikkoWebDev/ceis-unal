@@ -1,0 +1,80 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const site = Astro.site ?? new URL('https://ceis-unal.vercel.app');
+const canonical = new URL(Astro.url.pathname, site).href;
+---
+
+<!doctype html>
+<html lang="es" className="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="keywords" content="CEIS, ingeniería de sistemas, UNAL, universidad nacional de colombia, consejo estudiantil, malla curricular" />
+    <meta name="author" content="CEIS - Universidad Nacional de Colombia" />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="sitemap" href="/sitemap.xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content="es_CO" />
+    <meta property="og:site_name" content="CEIS UNAL" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <meta name="theme-color" content="#18514A" />
+
+    <script type="application/ld+json" set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'CEIS - Consejo Estudiantil de Ingeniería de Sistemas',
+      alternateName: 'CEIS UNAL',
+      url: site.href,
+      email: 'ceisunal@gmail.com',
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: 'Edificio 453, oficina 228',
+        addressLocality: 'Bogotá',
+        addressCountry: 'CO',
+      },
+      affiliation: {
+        '@type': 'CollegeOrUniversity',
+        name: 'Universidad Nacional de Colombia',
+      },
+    })} />
+
+    <script is:inline>
+      // dark mode sin flash: antes de pintar
+      const stored = localStorage.getItem('ceis-theme');
+      const dark = stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', dark);
+    </script>
+  </head>
+  <body>
+    <slot />
+    <script>
+      // reveal on scroll, un solo observer para todo
+      const io = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            e.target.classList.add('visible');
+            io.unobserve(e.target);
+          }
+        }
+      }, { threshold: 0.12 });
+      document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+    </script>
+  </body>
+</html>

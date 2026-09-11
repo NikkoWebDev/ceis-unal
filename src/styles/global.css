@@ -1,0 +1,180 @@
+@import "tailwindcss";
+@import "@fontsource/space-grotesk/latin-400.css";
+@import "@fontsource/space-grotesk/latin-500.css";
+@import "@fontsource/space-grotesk/latin-600.css";
+@import "@fontsource/space-grotesk/latin-700.css";
+@import "@fontsource/source-serif-4/latin-400.css";
+@import "@fontsource/source-serif-4/latin-400-italic.css";
+@import "@fontsource/source-serif-4/latin-600.css";
+@import "@fontsource/source-serif-4/latin-600-italic.css";
+
+@theme {
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, serif;
+
+  --color-papel: #F6EEE8;
+  --color-papel-2: #E6E2D0;
+  --color-tinta: #191114;
+  --color-tinta-suave: #907A67;
+  --color-unal: #18514A;
+  --color-unal-claro: #3B908D;
+  --color-unal-verde: #82B475;
+  --color-dorado: #c08a2e;
+  --color-noche: #0E1F1B;
+  --color-noche-2: #152218;
+}
+
+:root {
+  --bg: var(--color-papel);
+  --bg-alt: var(--color-papel-2);
+  --fg: var(--color-tinta);
+  --fg-suave: var(--color-tinta-suave);
+  --acento: var(--color-unal-claro);
+  --acento-2: var(--color-unal-verde);
+  --linea: color-mix(in srgb, var(--color-tinta-suave) 25%, transparent);
+  --card: color-mix(in srgb, #ffffff 55%, transparent);
+  --card-solid: #ffffff;
+  --glass-border: color-mix(in srgb, #ffffff 60%, transparent);
+  --glass-shadow: 0 8px 32px color-mix(in srgb, var(--color-tinta) 8%, transparent);
+  --glass-shadow-lg: 0 24px 64px color-mix(in srgb, var(--color-tinta) 14%, transparent);
+  --glow-1: color-mix(in srgb, var(--color-unal-claro) 24%, transparent);
+  --glow-2: color-mix(in srgb, var(--color-unal-verde) 22%, transparent);
+  --glow-3: color-mix(in srgb, var(--color-dorado) 18%, transparent);
+}
+
+html.dark {
+  --bg: var(--color-noche);
+  --bg-alt: var(--color-noche-2);
+  --fg: #f0eee2;
+  --fg-suave: #aeb8a4;
+  --acento: var(--color-unal-verde);
+  --acento-2: var(--color-unal-claro);
+  --linea: color-mix(in srgb, #f0eee2 12%, transparent);
+  --card: color-mix(in srgb, #f0eee2 6%, transparent);
+  --card-solid: var(--color-noche-2);
+  --glass-border: color-mix(in srgb, #f0eee2 14%, transparent);
+  --glass-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  --glass-shadow-lg: 0 24px 64px rgba(0,0,0,0.5);
+  --glow-1: color-mix(in srgb, var(--color-unal-claro) 20%, transparent);
+  --glow-2: color-mix(in srgb, var(--color-unal-verde) 16%, transparent);
+  --glow-3: color-mix(in srgb, var(--color-dorado) 14%, transparent);
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  transition: background-color 0.4s, color 0.4s;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--color-unal);
+  color: var(--color-papel);
+}
+
+/* ---------- glassmorphism ---------- */
+.glass {
+  background: var(--card);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+.glass-strong {
+  background: color-mix(in srgb, var(--card-solid) 72%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-lg);
+}
+.glass-hover {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s, border-color 0.35s;
+}
+.glass-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--glass-shadow-lg);
+  border-color: color-mix(in srgb, var(--acento) 45%, transparent);
+}
+
+/* blobs de gradiente decorativos */
+.blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  pointer-events: none;
+  animation: flotar 14s ease-in-out infinite alternate;
+}
+@keyframes flotar {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(4%, -6%) scale(1.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .blob { animation: none; }
+}
+
+/* reveal on scroll */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  html { scroll-behavior: auto; }
+}
+
+/* subrayado editorial */
+.link-editorial {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  transition: text-decoration-color 0.2s;
+}
+.link-editorial:hover {
+  text-decoration-color: currentColor;
+}
+
+/* texto con gradiente */
+.texto-grad {
+  background: linear-gradient(120deg, var(--acento), var(--acento-2) 55%, var(--color-dorado));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* scrollbar fino */
+.scroll-malla::-webkit-scrollbar { height: 8px; width: 8px; }
+.scroll-malla::-webkit-scrollbar-track { background: transparent; }
+.scroll-malla::-webkit-scrollbar-thumb { background: var(--linea); border-radius: 4px; }
+.scroll-malla::-webkit-scrollbar-thumb:hover { background: var(--acento); }
+
+/* malla: estados drag */
+.malla-semestre.drag-over {
+  border-color: var(--acento) !important;
+  background: color-mix(in srgb, var(--acento) 8%, var(--bg-alt)) !important;
+  box-shadow: inset 0 0 0 1px var(--acento);
+}
+.malla-curso.arrastrando { opacity: 0.35; transform: scale(0.96); }
+.malla-curso.eq-activa { cursor: pointer; }
+
+/* malla: seleccion tactil y semestres objetivo */
+.malla-curso.seleccionado {
+  border-color: var(--acento) !important;
+  box-shadow: 0 0 0 2px var(--acento), var(--glass-shadow);
+  transform: translateY(-2px);
+}
+.malla-semestre.sem-objetivo {
+  border-color: var(--acento) !important;
+  box-shadow: inset 0 0 0 1px var(--acento);
+}

@@ -1,0 +1,25 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import Hero from '../components/Hero.astro';
+import QuienesSomos from '../components/QuienesSomos.astro';
+import Objetivo from '../components/Objetivo.astro';
+import QueHacemos from '../components/QueHacemos.astro';
+import Contacto from '../components/Contacto.astro';
+---
+
+<Base
+  title="CEIS - Consejo Estudiantil de Ingeniería de Sistemas | UNAL"
+  description="Consejo Estudiantil de Ingeniería de Sistemas y Computación de la Universidad Nacional de Colombia. Representación estudiantil, comisiones, malla curricular interactiva y canales de comunicación."
+>
+  <Nav ruta="home" />
+  <main>
+    <Hero />
+    <QuienesSomos />
+    <Objetivo />
+    <QueHacemos />
+    <Contacto />
+  </main>
+  <Footer />
+</Base>

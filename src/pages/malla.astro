@@ -1,0 +1,48 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import MallaIsland from '../components/MallaIsland.astro';
+import { REGLAMENTO_URL } from '../data/malla';
+---
+
+<Base
+  title="Malla Curricular Interactiva | CEIS UNAL"
+  description="Malla curricular interactiva de Ingeniería de Sistemas y Computación, UNAL Bogotá: 10 semestres, 165 créditos, prerrequisitos, equivalencias y simulador de plan de estudios."
+>
+  <Nav ruta="malla" />
+  <main class="relative pt-32">
+    <section class="relative py-10 pb-14 overflow-hidden">
+      <div class="blob w-[460px] h-[460px] -right-32 -top-24" style="background: var(--glow-1)" aria-hidden="true"></div>
+      <div class="relative max-w-[1120px] mx-auto px-5 md:px-7">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <p class="font-sans text-[13px] font-semibold tracking-[0.2em] uppercase mb-3" style="color: var(--acento)">Herramienta</p>
+            <h1 class="font-serif text-3xl md:text-5xl tracking-tight" style="color: var(--fg)">Malla Curricular <em class="texto-grad">Interactiva</em></h1>
+            <p class="font-serif italic mt-3 text-lg" style="color: var(--fg-suave)">Ingeniería de Sistemas y Computación — Sede Bogotá</p>
+          </div>
+          <div class="glass rounded-2xl p-5 flex flex-col gap-1.5 text-sm font-sans md:text-right">
+            <span><strong class="font-serif text-lg" style="color: var(--fg)">10</strong> semestres</span>
+            <span><strong class="font-serif text-lg" style="color: var(--fg)">165</strong> créditos</span>
+            <span><strong class="font-serif text-lg" style="color: var(--fg)">39</strong> asignaturas · <strong class="font-serif text-lg" style="color: var(--fg)">23</strong> equivalencias</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <MallaIsland />
+
+    <section class="relative py-10 overflow-hidden">
+      <div class="blob w-[380px] h-[380px] left-1/4 bottom-0" style="background: var(--glow-2)" aria-hidden="true"></div>
+      <div class="relative max-w-[1120px] mx-auto px-5 md:px-7 text-sm leading-relaxed glass rounded-2xl p-5" style="color: var(--fg-suave)">
+        <p>
+          Ojo con las diferencias de créditos y prerrequisitos: confirma la oferta vigente en el
+          <a href="https://sia.unal.edu.co" target="_blank" rel="noopener" class="link-editorial font-semibold" style="color: var(--acento)">SIA</a>
+          antes de inscribir. Reglamento oficial del plan de estudios en
+          <a href={REGLAMENTO_URL} target="_blank" rel="noopener" class="link-editorial font-semibold" style="color: var(--acento)">legal.unal.edu.co</a>.
+        </p>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Base>

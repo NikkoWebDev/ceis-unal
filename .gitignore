@@ -1,0 +1,17 @@
+# dependencias
+node_modules/
+
+# build
+dist/
+
+# cache de astro
+.astro/
+
+# logs y env
+*.log
+.env
+.env.*
+
+# sistema
+.DS_Store
+Thumbs.db

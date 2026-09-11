@@ -1,0 +1,52 @@
+---
+const pilares = [
+  {
+    num: '01',
+    title: 'Visibilizar',
+    text: 'Visibilizamos las problemáticas académicas, personales y de bienestar que surgen durante la carrera, para que ninguna voz se quede sin escuchar.',
+    icon: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+  },
+  {
+    num: '02',
+    title: 'Proponer soluciones',
+    text: 'Convertimos las necesidades en propuestas y acciones concretas: apoyo mutuo, iniciativas y soluciones construidas activamente en comunidad.',
+    icon: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  },
+  {
+    num: '03',
+    title: 'Articular esfuerzos',
+    text: 'Articulamos esfuerzos con iniciativas estudiantiles, estamentos y la universidad para que las soluciones lleguen más lejos.',
+    icon: '<circle cx="5" cy="6" r="3"/><circle cx="19" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M7.5 7.5 10 15.5M16.5 7.5 14 15.5"/>',
+  },
+];
+---
+
+<section id="que-hacemos" class="relative py-24 scroll-mt-24 overflow-hidden">
+  <div class="blob w-[440px] h-[440px] -left-36 bottom-0" style="background: var(--glow-3)" aria-hidden="true"></div>
+
+  <div class="relative max-w-[1120px] mx-auto px-5 md:px-7">
+    <div class="reveal flex items-baseline justify-center gap-4 mb-6">
+      <span class="font-serif text-5xl leading-none texto-grad">03</span>
+      <p class="font-sans text-[13px] font-semibold tracking-[0.2em] uppercase" style="color: var(--acento)">Qué hacemos</p>
+    </div>
+    <h2 class="reveal font-serif text-3xl md:text-4xl tracking-tight text-center mb-16 max-w-[22ch] mx-auto" style="color: var(--fg)">
+      Un espacio creado <em style="color: var(--acento)">por y para</em> estudiantes
+    </h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {pilares.map((p) => (
+        <article class="reveal glass glass-hover rounded-3xl p-8 group">
+          <div class="flex items-center justify-between mb-6">
+            <span class="font-serif text-4xl leading-none" style="color: var(--linea)">{p.num}</span>
+            <span class="w-11 h-11 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110"
+              style="background: color-mix(in srgb, var(--acento) 12%, transparent); color: var(--acento)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" set:html={p.icon} aria-hidden="true" />
+            </span>
+          </div>
+          <h3 class="font-sans text-xl font-bold mb-3" style="color: var(--fg)">{p.title}</h3>
+          <p class="text-[15px] leading-relaxed" style="color: color-mix(in srgb, var(--fg) 72%, transparent)">{p.text}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>

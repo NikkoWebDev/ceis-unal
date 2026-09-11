@@ -1,0 +1,76 @@
+---
+const canales = [
+  {
+    label: 'Correo institucional',
+    value: 'ceisunal@gmail.com',
+    href: 'mailto:ceisunal@gmail.com',
+    external: false,
+    icon: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+  },
+  {
+    label: 'Instagram Oficial',
+    value: '@ceis_unal',
+    href: 'https://www.instagram.com/ceis_unal',
+    external: true,
+    icon: '<rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>',
+  },
+  {
+    label: 'Comunidad WhatsApp',
+    value: 'Unirme al grupo',
+    href: 'https://chat.whatsapp.com/CoKtYbkvYjgLfLmVsHV1f8',
+    external: true,
+    icon: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/>',
+  },
+  {
+    label: 'Ubicación (Sede Bogotá)',
+    value: 'Edificio 453, oficina 228',
+    href: 'https://maps.app.goo.gl/ouzzPmtctqLzsjXm9',
+    external: true,
+    icon: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
+  },
+];
+---
+
+<section id="contacto" class="relative py-24 scroll-mt-24 overflow-hidden" style="background: linear-gradient(160deg, var(--color-unal) 0%, #0E2A26 60%, var(--color-noche) 100%)">
+  <div class="blob w-[460px] h-[460px] -left-32 -top-20" style="background: var(--color-unal-verde); opacity: 0.22" aria-hidden="true"></div>
+  <div class="blob w-[400px] h-[400px] right-[-100px] bottom-[-80px]" style="background: var(--color-dorado); opacity: 0.14; animation-delay: -7s" aria-hidden="true"></div>
+
+  <svg class="absolute inset-0 w-full h-full opacity-[0.05]" aria-hidden="true">
+    <defs>
+      <pattern id="trama-contacto" width="48" height="48" patternUnits="userSpaceOnUse">
+        <path d="M48 0H0v48" fill="none" stroke="#F6EEE8" stroke-width="0.5"/>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#trama-contacto)"/>
+  </svg>
+
+  <div class="relative max-w-[1120px] mx-auto px-5 md:px-7">
+    <div class="reveal mb-14">
+      <p class="font-sans text-[13px] font-semibold tracking-[0.2em] uppercase mb-3" style="color: var(--color-dorado)">Conéctate</p>
+      <h2 class="font-serif text-3xl md:text-4xl tracking-tight" style="color: var(--color-papel)">Canales de Comunicación</h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {canales.map((c) => (
+        <a
+          href={c.href}
+          {...(c.external ? { target: '_blank', rel: 'noopener' } : {})}
+          class="reveal group flex items-center gap-5 p-6 rounded-3xl transition-all duration-300 hover:-translate-y-1"
+          style="background: rgba(246,238,232,0.06); border: 1px solid rgba(246,238,232,0.14); backdrop-filter: blur(18px)"
+        >
+          <span class="w-12 h-12 shrink-0 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+            style="background: rgba(130,180,117,0.14); color: var(--color-unal-verde)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" set:html={c.icon} aria-hidden="true" />
+          </span>
+          <span class="flex flex-col gap-1">
+            <span class="font-sans text-[11px] font-semibold tracking-[0.2em] uppercase" style="color: rgba(246,238,232,0.55)">{c.label}</span>
+            <span class="font-serif text-xl md:text-2xl transition-colors" style="color: var(--color-papel)">{c.value}</span>
+          </span>
+          {c.external && (
+            <svg class="ml-auto w-4 h-4 opacity-40 transition-all duration-300 group-hover:opacity-90 group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color: var(--color-papel)" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg>
+          )}
+        </a>
+      ))}
+    </div>
+  </div>
+</section>

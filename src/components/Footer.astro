@@ -1,0 +1,38 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="relative border-t" style="border-color: var(--linea)">
+  <div class="max-w-[1120px] mx-auto px-5 md:px-7 py-12 flex flex-col md:flex-row justify-between gap-10">
+    <div class="max-w-sm">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="w-9 h-9 rounded-xl flex items-center justify-center text-[13px] font-bold"
+          style="background: linear-gradient(135deg, var(--color-unal), var(--color-unal-claro)); color: #fff">CE</span>
+        <p class="font-serif text-lg" style="color: var(--fg)">Consejo Estudiantil de Ingeniería de Sistemas</p>
+      </div>
+      <p class="text-sm mt-2 leading-relaxed" style="color: var(--fg-suave)">
+        De estudiantes, por y para estudiantes. Universidad Nacional de Colombia, sede Bogotá.
+      </p>
+    </div>
+    <div class="flex gap-14 text-sm">
+      <div class="flex flex-col gap-2.5">
+        <p class="font-semibold uppercase tracking-wider text-xs mb-1" style="color: var(--fg-suave)">Sitio</p>
+        <a href="/" class="link-editorial transition-colors hover:opacity-80" style="color: var(--fg-suave)">Inicio</a>
+        <a href="/malla/" class="link-editorial transition-colors hover:opacity-80" style="color: var(--fg-suave)">Malla Interactiva</a>
+        <a href="/foro/" class="link-editorial transition-colors hover:opacity-80" style="color: var(--fg-suave)">Foro</a>
+      </div>
+      <div class="flex flex-col gap-2.5">
+        <p class="font-semibold uppercase tracking-wider text-xs mb-1" style="color: var(--fg-suave)">Contacto</p>
+        <a href="mailto:ceisunal@gmail.com" class="link-editorial transition-colors hover:opacity-80" style="color: var(--fg-suave)">ceisunal@gmail.com</a>
+        <a href="https://www.instagram.com/ceis_unal" target="_blank" rel="noopener" class="link-editorial transition-colors hover:opacity-80" style="color: var(--fg-suave)">@ceis_unal</a>
+        <a href="https://chat.whatsapp.com/CoKtYbkvYjgLfLmVsHV1f8" target="_blank" rel="noopener" class="link-editorial transition-colors hover:opacity-80" style="color: var(--fg-suave)">WhatsApp</a>
+      </div>
+    </div>
+  </div>
+  <div class="border-t" style="border-color: var(--linea)">
+    <div class="max-w-[1120px] mx-auto px-5 md:px-7 py-4 flex flex-col md:flex-row justify-between gap-2 text-xs" style="color: var(--fg-suave)">
+      <p>CEIS · {year}</p>
+      <p>Edificio 453, oficina 228 — Sede Bogotá</p>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,601 @@
+---
+import { semestres, metaCursos, equivalencias, componentes, tipos } from '../data/malla';
+
+const data = JSON.stringify({ semestres, metaCursos, equivalencias }).replace(/</g, '\\u003c');
+const comps = JSON.stringify(componentes);
+const tips = JSON.stringify(tipos);
+---
+
+<div
+  id="malla-root"
+  class="max-w-[1120px] mx-auto px-5 md:px-7 py-10"
+  data-malla={data}
+  data-comps={comps}
+  data-tipos={tips}
+>
+  <noscript>
+    <p class="text-sm" style="color: var(--fg-suave)">
+      La vista interactiva requiere JavaScript. El plan oficial: 10 semestres, 165 créditos.
+    </p>
+  </noscript>
+
+  <!-- controles glass -->
+  <div class="glass rounded-2xl p-4 mb-8 flex flex-wrap items-center gap-3 font-sans text-sm sticky top-20 z-30">
+    <button id="btn-agregar" class="px-4 py-2 rounded-full border transition-all cursor-pointer hover:-translate-y-px"
+      style="border-color: var(--linea); color: var(--fg-suave)">
+      + Libre elección
+    </button>
+    <button id="btn-optativas" class="px-4 py-2 rounded-full border transition-all cursor-pointer hover:-translate-y-px"
+      style="border-color: var(--linea); color: var(--fg-suave)" aria-pressed="false">
+      Mostrar optativas equivalentes
+    </button>
+    <button id="btn-reset" class="px-4 py-2 rounded-full border transition-all cursor-pointer hover:-translate-y-px"
+      style="border-color: var(--linea); color: var(--fg-suave)">
+      Restablecer plan oficial
+    </button>
+    <span id="malla-estado" class="ml-auto text-xs font-medium px-3 py-1.5 rounded-full"
+      style="background: color-mix(in srgb, var(--acento) 10%, transparent); color: var(--acento)"></span>
+  </div>
+
+  <!-- panel agregar libre eleccion -->
+  <div id="panel-agregar" class="hidden glass rounded-2xl p-4 mb-6 font-sans text-sm">
+    <div class="flex flex-wrap items-end gap-3">
+      <label class="flex flex-col gap-1 text-[11px] uppercase tracking-wider" style="color:var(--fg-suave)">
+        Semestre
+        <select id="agregar-sem" class="px-3 py-2 rounded-xl border bg-transparent" style="border-color:var(--linea); color:var(--fg)">
+          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+          <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-[11px] uppercase tracking-wider" style="color:var(--fg-suave)">
+        Créditos
+        <select id="agregar-cred" class="px-3 py-2 rounded-xl border bg-transparent" style="border-color:var(--linea); color:var(--fg)">
+          <option value="2">2</option><option value="3" selected>3</option><option value="4">4</option>
+        </select>
+      </label>
+      <button id="agregar-btn" class="px-4 py-2 rounded-full cursor-pointer font-semibold"
+        style="background:var(--acento); color:var(--bg)">Añadir</button>
+    </div>
+    <p class="text-[11px] mt-3" style="color:var(--fg-suave)">Agrega una materia de libre elección extra al plan. Se guarda en tu navegador junto con el plan.</p>
+  </div>
+
+  <div id="malla-leyenda" class="flex flex-wrap gap-x-6 gap-y-2 mb-8 font-sans text-xs"></div>
+
+  <!-- pager movil -->
+  <div id="malla-pager" class="md:hidden flex items-center justify-between gap-3 mb-3 font-sans">
+    <button id="pager-prev" class="w-9 h-9 rounded-full border flex items-center justify-center cursor-pointer shrink-0"
+      style="border-color:var(--linea); color:var(--fg-suave)" aria-label="Semestre anterior">←</button>
+    <div class="flex flex-col items-center gap-1.5">
+      <span id="pager-label" class="text-xs font-semibold" style="color:var(--fg)">Semestre 1 / 10</span>
+      <div id="pager-dots" class="flex gap-1.5"></div>
+    </div>
+    <button id="pager-next" class="w-9 h-9 rounded-full border flex items-center justify-center cursor-pointer shrink-0"
+      style="border-color:var(--linea); color:var(--fg-suave)" aria-label="Semestre siguiente">→</button>
+  </div>
+  <p class="md:hidden text-[11px] mb-4 text-center font-sans" style="color:var(--fg-suave)">Toca una materia y luego el semestre donde quieras ponerla</p>
+
+  <div id="malla-grid" class="scroll-malla flex gap-5 items-stretch overflow-x-auto snap-x snap-mandatory pb-2 md:grid md:grid-cols-2 md:overflow-visible md:snap-none md:items-start lg:grid-cols-3 xl:grid-cols-5"></div>
+
+  <!-- barra de accion tactil -->
+  <div id="barra-accion" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-50 glass-strong rounded-2xl p-3 w-[calc(100vw-2rem)] max-w-md flex-col gap-2">
+    <div class="flex items-center justify-between gap-2 px-1">
+      <span id="barra-label" class="text-[12px] font-semibold truncate" style="color:var(--fg)"></span>
+      <div class="flex gap-1.5 shrink-0">
+        <button id="barra-detalle" class="text-[12px] px-3 py-1.5 rounded-full cursor-pointer font-medium"
+          style="border:1px solid var(--linea); color:var(--acento)">Detalle</button>
+        <button id="barra-cerrar" class="w-7 h-7 rounded-full cursor-pointer"
+          style="border:1px solid var(--linea); color:var(--fg-suave)" aria-label="Cancelar">✕</button>
+      </div>
+    </div>
+    <div id="chips-sem" class="flex gap-1.5 overflow-x-auto scroll-malla pb-1"></div>
+  </div>
+
+  <!-- modal detalle -->
+  <div id="malla-detalle" class="fixed inset-0 z-[60] hidden items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div id="malla-detalle-fondo" class="absolute inset-0" style="background: rgba(14,31,27,0.55); backdrop-filter: blur(6px)"></div>
+    <div id="malla-detalle-card" class="glass-strong relative max-w-lg w-full max-h-[85vh] overflow-y-auto p-8 rounded-3xl scroll-malla"></div>
+  </div>
+</div>
+
+<script>
+  interface Curso { id: string; code: string; name: string; credits: number; prereqs: string[] }
+  interface Semestre { semester: number; courses: Curso[] }
+  interface MetaCurso { comp: string; agrup: string; sub?: string; subCred?: number; tipo: string }
+  interface EquivOption { code: string; name: string; credits: number; dept: string; req: string }
+
+  const root = document.getElementById('malla-root')!;
+  const DATA: { semestres: Semestre[]; metaCursos: Record<string, MetaCurso>; equivalencias: Record<string, EquivOption[]> } = JSON.parse(root.dataset.malla!);
+  const COMPS: Record<string, { label: string; color: string }> = JSON.parse(root.dataset.comps!);
+  const TIPOS: Record<string, string> = JSON.parse(root.dataset.tipos!);
+
+  const grid = document.getElementById('malla-grid')!;
+  const estado = document.getElementById('malla-estado')!;
+  const detalle = document.getElementById('malla-detalle')!;
+  const detalleCard = document.getElementById('malla-detalle-card')!;
+  const btnOpt = document.getElementById('btn-optativas') as HTMLButtonElement;
+  const btnReset = document.getElementById('btn-reset') as HTMLButtonElement;
+  const btnAgregar = document.getElementById('btn-agregar') as HTMLButtonElement;
+  const panelAgregar = document.getElementById('panel-agregar')!;
+  const barraAccion = document.getElementById('barra-accion')!;
+  const barraLabel = document.getElementById('barra-label')!;
+  const chipsSem = document.getElementById('chips-sem')!;
+  const pagerLabel = document.getElementById('pager-label')!;
+  const pagerPrev = document.getElementById('pager-prev')!;
+  const pagerNext = document.getElementById('pager-next')!;
+
+  const STORAGE = 'ceis-malla-plan';
+  const STORAGE_LIBS = 'ceis-malla-libs';
+  const esTactil = window.matchMedia('(pointer: coarse)').matches;
+
+  let asignacion: Map<string, number> = new Map();
+  let customs: Map<string, Curso> = new Map();
+  let mostrarOptativas = false;
+  let seleccion: string | null = null;
+  let arrastrando: string | null = null;
+
+  function metaDe(c: Curso): MetaCurso {
+    if (c.id === 'TRAB-GRADO') return { comp: 'T', agrup: 'Trabajo de grado', tipo: 'TG' };
+    if (c.code === 'LIB' || c.id.startsWith('LIB')) return { comp: 'L', agrup: 'Libre elección', tipo: 'L' };
+    return DATA.metaCursos[c.id] ?? { comp: 'C', agrup: 'Plan de estudios', tipo: 'OB' };
+  }
+
+  function cursoPorId(id: string): Curso | undefined {
+    for (const s of DATA.semestres) {
+      const c = s.courses.find((x) => x.id === id);
+      if (c) return c;
+    }
+    return customs.get(id);
+  }
+
+  function planOficial(): Map<string, number> {
+    const m = new Map<string, number>();
+    for (const s of DATA.semestres) for (const c of s.courses) m.set(c.id, s.semester);
+    return m;
+  }
+
+  function cargarLibs(): Map<string, Curso> {
+    const m = new Map<string, Curso>();
+    try {
+      const raw = localStorage.getItem(STORAGE_LIBS);
+      if (raw) {
+        const arr = JSON.parse(raw) as Curso[];
+        for (const c of arr) if (c && c.id && c.credits) m.set(c.id, c);
+      }
+    } catch { /* libs corruptas: ignoramos */ }
+    return m;
+  }
+
+  function cargarPlan(): Map<string, number> {
+    customs = cargarLibs();
+    try {
+      const raw = localStorage.getItem(STORAGE);
+      if (raw) {
+        const obj = JSON.parse(raw) as Record<string, number>;
+        const m = new Map<string, number>();
+        for (const [id, sem] of Object.entries(obj)) if (cursoPorId(id)) m.set(id, sem);
+        // completamos con el plan oficial y las libs custom por si el guardado quedo parcial
+        for (const [id, sem] of planOficial()) if (!m.has(id)) m.set(id, sem);
+        for (const id of customs.keys()) if (!m.has(id)) m.set(id, 10);
+        if (m.size >= planOficial().size) return m;
+      }
+    } catch { /* plan corrupto: usamos oficial */ }
+    return planOficial();
+  }
+
+  function guardarPlan() {
+    try {
+      localStorage.setItem(STORAGE, JSON.stringify(Object.fromEntries(asignacion)));
+      localStorage.setItem(STORAGE_LIBS, JSON.stringify([...customs.values()]));
+    } catch { /* storage lleno o bloqueado: seguimos sin persistir */ }
+  }
+
+  // prereq en semestre igual o posterior = roto
+  function prereqsRotos(c: Curso): string[] {
+    const propio = asignacion.get(c.id);
+    if (propio === undefined) return [];
+    return c.prereqs.filter((p) => {
+      const sem = asignacion.get(p);
+      return sem === undefined || sem >= propio;
+    });
+  }
+
+  function pintarLeyenda() {
+    const leyenda = document.getElementById('malla-leyenda')!;
+    leyenda.innerHTML = '';
+    for (const [k, v] of Object.entries(COMPS)) {
+      const item = document.createElement('span');
+      item.className = 'inline-flex items-center gap-2';
+      item.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background:${v.color}"></span>${v.label}`;
+      item.style.color = 'var(--fg-suave)';
+      leyenda.appendChild(item);
+    }
+  }
+
+  function cardCurso(c: Curso): HTMLElement {
+    const meta = metaDe(c);
+    const color = COMPS[meta.comp]?.color ?? '#3B908D';
+    const rotos = prereqsRotos(c);
+    const eqs = DATA.equivalencias[c.id] ?? [];
+    const el = document.createElement('article');
+    el.className = 'malla-curso group relative p-4 rounded-2xl border cursor-grab active:cursor-grabbing select-none transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg';
+    el.dataset.id = c.id;
+    el.draggable = !esTactil;
+    el.style.borderColor = `color-mix(in srgb, ${color} 45%, transparent)`;
+    el.style.borderLeftColor = color;
+    el.style.borderLeftWidth = '3px';
+    el.style.background = `color-mix(in srgb, ${color} 8%, var(--card))`;
+    el.style.backdropFilter = 'blur(10px)';
+    if (seleccion === c.id) el.classList.add('seleccionado');
+
+    const tipoLabel = TIPOS[meta.tipo] ?? meta.tipo;
+    el.innerHTML = `
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <span class="text-[10px] font-semibold tracking-wider uppercase" style="color:${color}">${tipoLabel}</span>
+        <span class="text-[10px] font-sans px-1.5 py-0.5 rounded-md" style="color:var(--fg-suave); border:1px solid var(--linea)">${c.credits} cr</span>
+      </div>
+      <h4 class="font-sans text-[13px] font-semibold leading-snug" style="color:var(--fg)">${c.name}</h4>
+      ${meta.sub ? `<p class="text-[11px] mt-1.5" style="color:var(--fg-suave)">Subagrupación: ${meta.sub} · exige ${meta.subCred} cr</p>` : ''}
+      ${rotos.length ? `<p class="text-[11px] mt-2 flex items-center gap-1 font-medium" style="color:#d4574a">⚠ Requisito en semestre igual o posterior</p>` : ''}
+      ${eqs.length ? `<p class="text-[11px] mt-2 font-medium" style="color:var(--acento)">${eqs.length} equivalencia${eqs.length > 1 ? 's' : ''} — clic para ver</p>` : ''}
+      ${seleccion === c.id ? `<p class="text-[11px] mt-2 font-semibold" style="color:var(--acento)">Seleccionada — toca un semestre</p>` : ''}
+    `;
+    return el;
+  }
+
+  // card compacta de optativa equivalente (no arrastrable)
+  function cardOptativa(idPadre: string, o: EquivOption): HTMLElement {
+    const el = document.createElement('div');
+    el.className = 'p-3 rounded-xl border text-[11px] leading-snug';
+    el.style.borderColor = 'var(--linea)';
+    el.style.background = 'color-mix(in srgb, var(--acento) 5%, transparent)';
+    el.innerHTML = `
+      <p class="font-semibold" style="color:var(--fg)">${o.name}</p>
+      <p class="mt-1" style="color:var(--fg-suave)">${o.credits} cr · ${o.dept}</p>
+      <p class="mt-0.5" style="color:var(--fg-suave)">Req: ${o.req}</p>
+      <p class="mt-1.5 text-[10px] uppercase tracking-wider" style="color:var(--acento)">equivale a: ${cursoPorId(idPadre)?.name}</p>
+    `;
+    return el;
+  }
+
+  function pintarGrid() {
+    grid.innerHTML = '';
+    const maxSem = Math.max(10, ...[...asignacion.values()]);
+    for (let n = 1; n <= maxSem; n++) {
+      const col = document.createElement('div');
+      col.className = 'malla-semestre glass rounded-3xl p-4 flex flex-col gap-3 min-h-[140px] transition-all duration-200 shrink-0 w-[86vw] max-w-[360px] snap-center md:w-auto md:max-w-none';
+      col.dataset.sem = n;
+      if (seleccion) col.classList.add('sem-objetivo');
+
+      const ids = [...asignacion.entries()].filter(([, s]) => s === n).map(([id]) => id);
+      const creds = ids.reduce((a, id) => a + (cursoPorId(id)?.credits ?? 0), 0);
+      const ok = creds >= 14 && creds <= 20;
+      const alto = creds > 24;
+      const colorBar = alto ? '#d4574a' : ok ? 'var(--acento-2)' : 'var(--color-dorado)';
+      const pct = Math.min(100, Math.round((creds / 24) * 100));
+
+      const head = document.createElement('div');
+      head.innerHTML = `
+        <div class="flex items-baseline justify-between px-1 pb-2 border-b" style="border-color:var(--linea)">
+          <span class="font-serif text-xl font-semibold" style="color:var(--fg)">Semestre ${n}</span>
+          <span class="text-[11px] font-sans font-medium" style="color:var(--fg-suave)">${creds} cr</span>
+        </div>
+        <div class="h-1 rounded-full overflow-hidden mt-2" style="background:var(--linea)">
+          <div class="h-full rounded-full transition-all duration-500" style="width:${pct}%; background:${colorBar}"></div>
+        </div>
+      `;
+      col.appendChild(head);
+
+      for (const id of ids) {
+        const c = cursoPorId(id);
+        if (!c) continue;
+        col.appendChild(cardCurso(c));
+        // optativas equivalentes expandidas
+        if (mostrarOptativas) {
+          const eqs = DATA.equivalencias[id] ?? [];
+          for (const o of eqs) col.appendChild(cardOptativa(id, o));
+        }
+      }
+
+      const drop = document.createElement('div');
+      drop.className = 'flex-1 min-h-[36px] rounded-xl border border-dashed text-[11px] flex items-center justify-center transition-opacity';
+      drop.style.borderColor = 'var(--linea)';
+      drop.style.color = 'var(--fg-suave)';
+      drop.textContent = esTactil ? (seleccion ? 'toca para colocar aquí' : '—') : 'arrastra aquí';
+      col.appendChild(drop);
+
+      grid.appendChild(col);
+    }
+    pintarDots(maxSem);
+    actualizarPager();
+  }
+
+  function recalcularEstado() {
+    let total = 0;
+    for (const [id] of asignacion) total += cursoPorId(id)?.credits ?? 0;
+    const oficial = planOficial();
+    const modificado = [...oficial.entries()].some(([id, s]) => asignacion.get(id) !== s);
+    estado.textContent = `${asignacion.size} asignaturas · ${total} créditos${modificado ? ' · plan modificado' : ''}`;
+  }
+
+  // ---------- pager movil ----------
+  function semestreActual(): number {
+    const cols = grid.querySelectorAll('.malla-semestre');
+    if (!cols.length) return 1;
+    const mid = grid.scrollLeft + grid.clientWidth / 2;
+    let best = 0, bestDist = Infinity;
+    cols.forEach((c, i) => {
+      const r = c.getBoundingClientRect();
+      const gr = grid.getBoundingClientRect();
+      // centro en coordenadas de contenido: viewport + scroll
+      const center = r.left - gr.left + r.width / 2 + grid.scrollLeft;
+      const d = Math.abs(center - mid);
+      if (d < bestDist) { bestDist = d; best = i; }
+    });
+    return best + 1;
+  }
+
+  function actualizarPager() {
+    const cols = grid.querySelectorAll('.malla-semestre');
+    if (!cols.length) return;
+    const n = semestreActual();
+    pagerLabel.textContent = `Semestre ${n} / ${cols.length}`;
+    const dots = document.querySelectorAll('#pager-dots button');
+    dots.forEach((d, i) => {
+      const el = d as HTMLElement;
+      const active = i === n - 1;
+      el.style.background = active ? 'var(--acento)' : 'var(--linea)';
+      el.style.transform = active ? 'scale(1.4)' : 'scale(1)';
+    });
+  }
+
+  function pintarDots(maxSem: number) {
+    const dots = document.getElementById('pager-dots')!;
+    dots.innerHTML = '';
+    for (let n = 1; n <= maxSem; n++) {
+      const d = document.createElement('button');
+      d.className = 'w-2 h-2 rounded-full cursor-pointer transition-all';
+      d.style.background = 'var(--linea)';
+      d.setAttribute('aria-label', `Ir al semestre ${n}`);
+      d.addEventListener('click', () => irASemestre(n));
+      dots.appendChild(d);
+    }
+  }
+
+  function irASemestre(n: number) {
+    const col = grid.querySelector(`.malla-semestre[data-sem="${n}"]`) as HTMLElement | null;
+    if (col) col.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }
+
+  let scrollRaf = 0;
+  grid.addEventListener('scroll', () => {
+    if (scrollRaf) return;
+    scrollRaf = requestAnimationFrame(() => { scrollRaf = 0; actualizarPager(); });
+  });
+
+  pagerPrev.addEventListener('click', () => irASemestre(Math.max(1, semestreActual() - 1)));
+  pagerNext.addEventListener('click', () => {
+    const cols = grid.querySelectorAll('.malla-semestre');
+    irASemestre(Math.min(cols.length, semestreActual() + 1));
+  });
+
+  // ---------- barra de accion tactil ----------
+  function mostrarBarra(id: string) {
+    const c = cursoPorId(id);
+    if (!c) return;
+    barraLabel.textContent = `Mover: ${c.name}`;
+    const maxSem = Math.max(10, ...[...asignacion.values()]);
+    chipsSem.innerHTML = '';
+    for (let n = 1; n <= maxSem; n++) {
+      const b = document.createElement('button');
+      b.className = 'w-9 h-9 rounded-full text-[13px] font-semibold shrink-0 cursor-pointer transition-all hover:scale-110';
+      b.style.cssText = 'border:1px solid var(--linea); color:var(--fg); background:transparent';
+      b.textContent = String(n);
+      b.setAttribute('aria-label', `Mover al semestre ${n}`);
+      b.addEventListener('click', () => {
+        asignacion.set(id, n);
+        seleccion = null;
+        ocultarBarra();
+        guardarPlan();
+        pintarGrid();
+        recalcularEstado();
+      });
+      chipsSem.appendChild(b);
+    }
+    barraAccion.classList.remove('hidden');
+    barraAccion.classList.add('flex');
+  }
+
+  function ocultarBarra() {
+    barraAccion.classList.add('hidden');
+    barraAccion.classList.remove('flex');
+  }
+
+  document.getElementById('barra-detalle')!.addEventListener('click', () => {
+    if (!seleccion) return;
+    const c = cursoPorId(seleccion);
+    seleccion = null;
+    ocultarBarra();
+    pintarGrid();
+    if (c) abrirDetalle(c);
+  });
+
+  document.getElementById('barra-cerrar')!.addEventListener('click', () => {
+    seleccion = null;
+    ocultarBarra();
+    pintarGrid();
+  });
+
+  // ---------- drag & drop (desktop) ----------
+  grid.addEventListener('dragstart', (e) => {
+    const card = (e.target as HTMLElement).closest('.malla-curso');
+    if (!card) return;
+    arrastrando = card.dataset.id!;
+    card.classList.add('arrastrando');
+    e.dataTransfer?.setData('text/plain', arrastrando);
+    e.dataTransfer && (e.dataTransfer.effectAllowed = 'move');
+  });
+
+  grid.addEventListener('dragend', (e) => {
+    const card = (e.target as HTMLElement).closest('.malla-curso');
+    card?.classList.remove('arrastrando');
+    arrastrando = null;
+    grid.querySelectorAll('.malla-semestre').forEach((c) => c.classList.remove('drag-over'));
+  });
+
+  grid.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const col = (e.target as HTMLElement).closest('.malla-semestre');
+    if (col) col.classList.add('drag-over');
+  });
+
+  grid.addEventListener('dragleave', (e) => {
+    const col = (e.target as HTMLElement).closest('.malla-semestre');
+    if (col) col.classList.remove('drag-over');
+  });
+
+  grid.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const col = (e.target as HTMLElement).closest('.malla-semestre');
+    if (!col || !arrastrando) return;
+    col.classList.remove('drag-over');
+    asignacion.set(arrastrando, Number(col.dataset.sem));
+    guardarPlan();
+    pintarGrid();
+    recalcularEstado();
+  });
+
+  // ---------- click: tactil selecciona, desktop abre modal ----------
+  grid.addEventListener('click', (e) => {
+    const card = (e.target as HTMLElement).closest('.malla-curso');
+    if (card) {
+      const id = card.dataset.id!;
+      if (esTactil) {
+        if (seleccion === id) {
+          seleccion = null;
+          ocultarBarra();
+        } else {
+          seleccion = id;
+          mostrarBarra(id);
+        }
+        pintarGrid();
+        return;
+      }
+      const c = cursoPorId(id);
+      if (c) abrirDetalle(c);
+      return;
+    }
+    const col = (e.target as HTMLElement).closest('.malla-semestre');
+    if (col && esTactil && seleccion) {
+      asignacion.set(seleccion, Number(col.dataset.sem));
+      seleccion = null;
+      ocultarBarra();
+      guardarPlan();
+      pintarGrid();
+      recalcularEstado();
+    }
+  });
+
+  // ---------- modal detalle ----------
+  function abrirDetalle(c: Curso) {
+    const meta = metaDe(c);
+    const color = COMPS[meta.comp]?.color ?? '#3B908D';
+    const eqs = DATA.equivalencias[c.id] ?? [];
+    const rotos = prereqsRotos(c);
+    const prereqNombres = c.prereqs.map((p) => cursoPorId(p)?.name ?? p);
+    const maxSem = Math.max(10, ...[...asignacion.values()]);
+    const semActual = asignacion.get(c.id) ?? 1;
+    const moverOpts = Array.from({ length: maxSem }, (_, i) => i + 1)
+      .map((n) => `<option value="${n}" ${n === semActual ? 'selected' : ''}>Semestre ${n}</option>`).join('');
+
+    const eqHtml = eqs.length
+      ? `<div class="mt-6">
+          <p class="font-sans text-[11px] font-semibold tracking-wider uppercase mb-3" style="color:var(--fg-suave)">Equivalencias (${eqs.length})</p>
+          <ul class="flex flex-col gap-3">
+            ${eqs.map((o) => `<li class="text-[13px] leading-snug pl-3 border-l-2" style="border-color:${color}">
+              <strong style="color:var(--fg)">${o.name}</strong>
+              <span class="block text-[12px] mt-0.5" style="color:var(--fg-suave)">${o.credits} cr · ${o.dept} · Req: ${o.req}</span>
+            </li>`).join('')}
+          </ul>
+        </div>`
+      : `<p class="mt-6 text-[13px] leading-relaxed" style="color:var(--fg-suave)">No tenemos equivalencias registradas para esta asignatura. Al ser un plan con opciones, consulta las subagrupaciones vigentes en el SIA.</p>`;
+
+    detalleCard.innerHTML = `
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <span class="text-[10px] font-semibold tracking-wider uppercase px-2.5 py-1 rounded-full" style="color:${color}; border:1px solid color-mix(in srgb, ${color} 50%, transparent)">${TIPOS[meta.tipo] ?? meta.tipo}</span>
+        <button id="detalle-cerrar" class="w-8 h-8 rounded-full border flex items-center justify-center cursor-pointer shrink-0 transition-transform hover:scale-110" style="border-color:var(--linea); color:var(--fg-suave)" aria-label="Cerrar">✕</button>
+      </div>
+      <h3 class="font-serif text-2xl leading-tight mb-2" style="color:var(--fg)">${c.name}</h3>
+      <p class="text-[13px] mb-5" style="color:var(--fg-suave)">${c.credits} créditos · Componente: ${COMPS[meta.comp]?.label} · ${meta.agrup}</p>
+      ${meta.sub ? `<p class="text-[13px] mb-5" style="color:var(--fg-suave)">Subagrupación con opciones: <strong style="color:var(--fg)">${meta.sub}</strong> — exige ${meta.subCred} créditos</p>` : ''}
+      ${prereqNombres.length ? `<p class="text-[13px] mb-2" style="color:var(--fg-suave)">Prerrequisitos: <strong style="color:var(--fg)">${prereqNombres.join(', ')}</strong></p>` : '<p class="text-[13px] mb-2" style="color:var(--fg-suave)">Sin prerrequisitos</p>'}
+      ${rotos.length ? `<p class="text-[13px] mt-3 mb-2 p-3 rounded-xl" style="color:#d4574a; background:color-mix(in srgb, #d4574a 8%, transparent)">⚠ Requisito en semestre igual o posterior: ${rotos.map((r) => cursoPorId(r)?.name ?? r).join(', ')}</p>` : ''}
+      <div class="mt-6 flex flex-wrap items-center gap-3">
+        <span class="text-[13px]" style="color:var(--fg-suave)">Mover a</span>
+        <select id="detalle-mover-sem" class="px-3 py-1.5 rounded-xl border bg-transparent text-[13px]" style="border-color:var(--linea); color:var(--fg)">${moverOpts}</select>
+        <button id="detalle-mover-btn" class="px-4 py-1.5 rounded-full text-[13px] font-semibold cursor-pointer" style="background:var(--acento); color:var(--bg)">Mover</button>
+      </div>
+      ${eqHtml}
+    `;
+    detalle.classList.remove('hidden');
+    detalle.classList.add('flex');
+    document.getElementById('detalle-cerrar')!.addEventListener('click', cerrarDetalle);
+    document.getElementById('detalle-mover-btn')!.addEventListener('click', () => {
+      const sel = document.getElementById('detalle-mover-sem') as HTMLSelectElement;
+      asignacion.set(c.id, Number(sel.value));
+      guardarPlan();
+      pintarGrid();
+      recalcularEstado();
+      cerrarDetalle();
+    });
+  }
+
+  function cerrarDetalle() {
+    detalle.classList.add('hidden');
+    detalle.classList.remove('flex');
+  }
+
+  document.getElementById('malla-detalle-fondo')!.addEventListener('click', cerrarDetalle);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarDetalle(); });
+
+  // ---------- botones ----------
+  btnOpt.addEventListener('click', () => {
+    mostrarOptativas = !mostrarOptativas;
+    btnOpt.setAttribute('aria-pressed', String(mostrarOptativas));
+    btnOpt.textContent = mostrarOptativas ? 'Ocultar optativas equivalentes' : 'Mostrar optativas equivalentes';
+    btnOpt.style.color = mostrarOptativas ? 'var(--acento)' : 'var(--fg-suave)';
+    btnOpt.style.borderColor = mostrarOptativas ? 'var(--acento)' : 'var(--linea)';
+    btnOpt.style.background = mostrarOptativas ? 'color-mix(in srgb, var(--acento) 10%, transparent)' : 'transparent';
+    pintarGrid();
+  });
+
+  btnReset.addEventListener('click', () => {
+    asignacion = planOficial();
+    customs = new Map();
+    guardarPlan();
+    pintarGrid();
+    recalcularEstado();
+  });
+
+  btnAgregar.addEventListener('click', () => {
+    panelAgregar.classList.toggle('hidden');
+  });
+
+  document.getElementById('agregar-btn')!.addEventListener('click', () => {
+    const semSel = document.getElementById('agregar-sem') as HTMLSelectElement;
+    const credSel = document.getElementById('agregar-cred') as HTMLSelectElement;
+    const id = `LIB-${Date.now()}`;
+    const c: Curso = { id, code: 'LIB', name: 'Libre Elección', credits: Number(credSel.value), prereqs: [] };
+    customs.set(id, c);
+    asignacion.set(id, Number(semSel.value));
+    guardarPlan();
+    pintarGrid();
+    recalcularEstado();
+    panelAgregar.classList.add('hidden');
+  });
+
+  // ---------- init ----------
+  asignacion = cargarPlan();
+  pintarLeyenda();
+  pintarGrid();
+  recalcularEstado();
+</script>

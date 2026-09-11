@@ -1,0 +1,25 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Base title="Página no encontrada | CEIS UNAL" description="La página que buscas no existe en el sitio del CEIS.">
+  <Nav ruta="" />
+  <main class="relative pt-32 min-h-[80vh] flex items-center overflow-hidden">
+    <div class="blob w-[460px] h-[460px] left-1/2 -translate-x-1/2 top-10" style="background: var(--glow-3)" aria-hidden="true"></div>
+    <div class="relative max-w-[1120px] mx-auto px-5 md:px-7 w-full py-10 text-center">
+      <p class="reveal font-serif text-[9rem] md:text-[14rem] leading-none select-none texto-grad">404</p>
+      <h1 class="reveal font-serif text-3xl md:text-4xl tracking-tight -mt-6 mb-5" style="color: var(--fg)">Esta página no existe <em style="color: var(--acento)">todavía</em></h1>
+      <p class="reveal text-[17px] max-w-md mx-auto leading-relaxed mb-10" style="color: color-mix(in srgb, var(--fg) 75%, transparent)">
+        El enlace llegó a un semestre que no está en la malla. Volvamos al inicio.
+      </p>
+      <div class="reveal flex flex-wrap justify-center gap-4 font-sans">
+        <a href="/" class="text-sm font-semibold px-6 py-3 rounded-2xl transition-all duration-300 hover:-translate-y-1"
+          style="background: linear-gradient(135deg, var(--color-unal), var(--color-unal-claro)); color: #fff">Volver al inicio</a>
+        <a href="/malla/" class="glass text-sm font-semibold px-6 py-3 rounded-2xl transition-all duration-300 hover:-translate-y-1" style="color: var(--fg)">Ver la malla</a>
+      </div>
+    </div>
+  </main>
+  <Footer />
+</Base>
