@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
-import { Send, MapPin, Sparkles, ArrowLeft, Info, Moon, Sun, Eye, EyeOff, ExternalLink, Layers, GraduationCap, Lightbulb, Users } from 'lucide-react';
+import { Send, MapPin, Sparkles, ArrowLeft, Info, Moon, Sun, Eye, EyeOff, ExternalLink, Layers, GraduationCap, Lightbulb, Users, AlertTriangle } from 'lucide-react';
 import ForoSection, { ForoAuthButton } from './foro/Foro';
 
 /* ================= HOOKS ================= */
@@ -645,6 +645,27 @@ function getTipologia(course) {
   return TIPOLOGIA[course.id] || { comp: 'C', agrup: 'Plan de estudios', tipo: 'OB' };
 }
 
+/* ============ PLANIFICADOR: layout personalizado por semestre ============ */
+function buildPlanSemesters(layout) {
+  const cols = new Map();
+  MALLA_DATA.forEach(sem => sem.courses.forEach(c => {
+    const raw = layout[c.id];
+    const target = Number.isInteger(raw) ? Math.min(Math.max(raw, 1), 20) : sem.semester;
+    if (!cols.has(target)) cols.set(target, []);
+    cols.get(target).push(c);
+  }));
+  const max = Math.max(10, ...cols.keys());
+  const out = [];
+  for (let n = 1; n <= max; n++) out.push({ semester: n, courses: cols.get(n) || [] });
+  return out.filter(s => s.semester <= 10 || s.courses.length > 0);
+}
+
+function buildSemMap(semesters) {
+  const m = {};
+  semesters.forEach(sem => sem.courses.forEach(c => { m[c.id] = sem.semester; }));
+  return m;
+}
+
 /* ============ OPTATIVAS EQUIVALENTES (Acuerdo 11 de 2023) ============
    Asignaturas de la misma subagrupación que el plan permite cursar en lugar de
    la asignatura de la ruta estándar, hasta completar los créditos exigidos. */
@@ -752,6 +773,25 @@ const OPTATIVAS_DATA = {
 function MallaInteractiva({ darkMode }) {
   const [selectedId, setSelectedId] = useState(null);
   const [showOptativas, setShowOptativas] = useState(true);
+  const [planner, setPlanner] = useState(false);
+  const [dropSem, setDropSem] = useState(null);
+  const [customLayout, setCustomLayout] = useState(() => {
+    try {
+      const raw = localStorage.getItem('ceis-plan-v1');
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ceis-plan-v1', JSON.stringify(customLayout));
+    } catch {
+      /* sin almacenamiento: el plan solo vive en memoria */
+    }
+  }, [customLayout]);
   const [lines, setLines] = useState([]);
   const [svgSize, setSvgSize] = useState({ width: '100%', height: '100%' });
   const containerRef = useRef(null);
@@ -767,6 +807,27 @@ function MallaInteractiva({ darkMode }) {
   };
 
   const selectedCourse = getSelectedCourse();
+
+  const toggleCourse = (id) => setSelectedId(prev => (prev === id ? null : id));
+
+  const semesters = planner ? buildPlanSemesters(customLayout) : MALLA_DATA;
+  const semMap = planner ? buildSemMap(semesters) : null;
+  const maxSem = semesters[semesters.length - 1].semester;
+
+  const moveCourse = (id, target) => {
+    if (!id || !Number.isInteger(target) || target < 1) return;
+    setCustomLayout(prev => ({ ...prev, [id]: Math.min(target, 20) }));
+    setDropSem(null);
+  };
+
+  const resetPlan = () => {
+    setCustomLayout({});
+    try {
+      localStorage.removeItem('ceis-plan-v1');
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
   const selectedTip = selectedCourse ? getTipologia(selectedCourse) : null;
   const recordedOpts = selectedId ? (OPTATIVAS_DATA[selectedId] || []) : [];
   const unlockCount = selectedId
@@ -877,6 +938,17 @@ function MallaInteractiva({ darkMode }) {
           {showOptativas ? <Eye size={14} /> : <EyeOff size={14} />}
           Optativas {showOptativas ? 'visibles' : 'ocultas'}
         </button>
+        <button
+          onClick={() => { setPlanner(!planner); setSelectedId(null); }}
+          title="Arrastrar materias entre semestres para simular tu plan"
+          className={`ml-2 inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full border cursor-pointer transition-all duration-300 ${
+            planner
+              ? 'bg-[#3B908D]/20 border-[#3B908D] text-[#3B908D]'
+              : (darkMode ? 'border-[#f0eee2]/20 text-[#aeb8a4] hover:border-[#3B908D]' : 'border-[#907A67]/30 text-[#907A67] hover:border-[#3B908D]')
+          }`}
+        >
+          {planner ? 'Ver malla oficial' : 'Planificar mi malla'}
+        </button>
         {selectedId && (
           <button onClick={() => setSelectedId(null)} className="ml-4 text-xs font-semibold text-[#82B475] underline bg-transparent border-none cursor-pointer">
             Limpiar selección
@@ -904,16 +976,20 @@ function MallaInteractiva({ darkMode }) {
         </span>
       </div>
 
-      {selectedCourse && selectedTip && (
-        <MallaDetalleCurso
-          course={selectedCourse}
-          tip={selectedTip}
-          opts={recordedOpts}
-          showOptativas={showOptativas}
-          unlockCount={unlockCount}
-          darkMode={darkMode}
-          onEnableOptativas={() => setShowOptativas(true)}
-        />
+      {planner && (
+        <div className={`mb-8 flex flex-wrap items-center justify-between gap-3 font-sans text-sm py-3 px-4 rounded-xl border ${
+          darkMode ? 'bg-[#3B908D]/10 border-[#3B908D]/40 text-[#f0eee2]' : 'bg-[#3B908D]/10 border-[#3B908D]/40 text-[#191114]'
+        }`}>
+          <span>
+            Modo planificación: <strong>arrastra</strong> las materias entre semestres o a la columna “+ Nuevo” para simular tu plan. Se guarda en este navegador.
+          </span>
+          <span className="flex items-center gap-3">
+            <span className="text-xs opacity-80">{Object.keys(customLayout).length} movidas</span>
+            <button onClick={resetPlan} className="text-xs font-bold text-[#c08a2e] underline bg-transparent border-none cursor-pointer p-0">
+              Restablecer oficial
+            </button>
+          </span>
+        </div>
       )}
 
       <div className="overflow-x-auto pb-12 relative" ref={containerRef}>
@@ -938,21 +1014,54 @@ function MallaInteractiva({ darkMode }) {
         )}
 
         <div className="flex gap-8 min-w-max px-4 pt-4">
-          {MALLA_DATA.map((semester, semIdx) => (
+          {semesters.map((semester, semIdx) => (
             <MallaSemestre
               key={semester.semester}
               semester={semester}
               semIdx={semIdx}
               darkMode={darkMode}
               showOptativas={showOptativas}
-              setSelectedId={setSelectedId}
+              onSelectCourse={toggleCourse}
               getCourseStatus={getCourseStatus}
               statusStyles={statusStyles}
               courseRefs={courseRefs}
+              planner={planner}
+              semMap={semMap}
+              dropActive={planner && dropSem === semester.semester}
+              onDropSemester={moveCourse}
+              onOverSemester={setDropSem}
             />
           ))}
+          {planner && (
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDropSem(maxSem + 1); }}
+              onDragLeave={() => setDropSem(cur => (cur === maxSem + 1 ? null : cur))}
+              onDrop={(e) => { e.preventDefault(); moveCourse(e.dataTransfer.getData('text/plain'), maxSem + 1); }}
+              className={`w-56 shrink-0 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 py-10 font-sans transition-colors ${
+                dropSem === maxSem + 1
+                  ? 'border-[#3B908D] bg-[#3B908D]/15 text-[#3B908D]'
+                  : (darkMode ? 'border-[#f0eee2]/20 text-[#aeb8a4]' : 'border-[#907A67]/30 text-[#907A67]')
+              }`}
+            >
+              <span className="text-3xl leading-none font-bold">+</span>
+              <span className="text-sm font-semibold">Suelta aquí</span>
+              <span className="text-xs font-normal">Crea el Semestre {maxSem + 1}</span>
+            </div>
+          )}
         </div>
       </div>
+
+      {selectedCourse && selectedTip && !planner && (
+        <MallaDetalleCurso
+          course={selectedCourse}
+          tip={selectedTip}
+          opts={recordedOpts}
+          showOptativas={showOptativas}
+          unlockCount={unlockCount}
+          darkMode={darkMode}
+          onEnableOptativas={() => setShowOptativas(true)}
+        />
+      )}
 
       <div className="text-center mt-4 max-w-3xl mx-auto">
         <p className={`text-xs font-sans flex items-center justify-center gap-1.5 flex-wrap ${darkMode ? 'text-[#aeb8a4]' : 'text-[#907A67]'}`}>
@@ -1090,12 +1199,12 @@ function MallaDetalleCurso({ course, tip, opts, showOptativas, unlockCount, dark
   );
 }
 
-function MallaSemestre({ semester, semIdx, darkMode, showOptativas, setSelectedId, getCourseStatus, statusStyles, courseRefs }) {
+function MallaSemestre({ semester, semIdx, darkMode, showOptativas, onSelectCourse, getCourseStatus, statusStyles, courseRefs, planner, semMap, dropActive, onDropSemester, onOverSemester }) {
   const ref = useRef(null);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || planner) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -1107,15 +1216,30 @@ function MallaSemestre({ semester, semIdx, darkMode, showOptativas, setSelectedI
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [semIdx]);
+  }, [semIdx, planner]);
+
+  const semesterCredits = semester.courses.reduce((acc, c) => acc + c.credits, 0);
 
   return (
-    <div ref={ref} className="malla-semester w-56 shrink-0 flex flex-col gap-5">
+    <div
+      ref={ref}
+      onDragOver={planner ? (e) => { e.preventDefault(); onOverSemester(semester.semester); } : undefined}
+      onDragLeave={planner ? () => onOverSemester(cur => (cur === semester.semester ? null : cur)) : undefined}
+      onDrop={planner ? (e) => { e.preventDefault(); onDropSemester(e.dataTransfer.getData('text/plain'), semester.semester); } : undefined}
+      className={`malla-semester w-56 shrink-0 flex flex-col gap-5 rounded-xl transition-colors duration-200 ${planner ? 'is-visible' : ''} ${
+        planner && dropActive ? 'bg-[#3B908D]/15 ring-2 ring-[#3B908D]/60' : ''
+      }`}
+    >
       <div className={`text-center font-sans font-bold py-2 rounded-lg border z-10 relative ${
         darkMode ? 'text-[#82B475] bg-[#1c2c1f] border-[#f0eee2]/20' : 'text-[#18514A] bg-[#82B475]/20 border-[#82B475]/40'
       }`}>
         Semestre {semester.semester}
       </div>
+      {planner && (
+        <div className={`text-center font-sans text-xs font-semibold -mt-3 ${darkMode ? 'text-[#aeb8a4]' : 'text-[#907A67]'}`}>
+          {semesterCredits} CR
+        </div>
+      )}
 
       {semester.courses.map((course) => {
         const status = getCourseStatus(course);
@@ -1123,14 +1247,20 @@ function MallaSemestre({ semester, semIdx, darkMode, showOptativas, setSelectedI
         const tip = getTipologia(course);
         const compColor = (COMP_META[tip.comp] || COMP_META.C).color;
         const isOpt = tip.tipo === 'OP';
+        const here = planner && semMap ? (semMap[course.id] ?? semester.semester) : semester.semester;
+        const latePrereqs = planner && semMap
+          ? course.prereqs.filter(pid => semMap[pid] !== undefined && semMap[pid] >= here)
+          : [];
 
         return (
           <button
             key={course.id}
             ref={el => courseRefs.current[course.id] = el}
-            onClick={() => setSelectedId(course.id)}
+            draggable={planner}
+            onDragStart={planner ? (e) => { e.dataTransfer.setData('text/plain', course.id); e.dataTransfer.effectAllowed = 'move'; } : undefined}
+            onClick={() => { if (!planner) onSelectCourse(course.id); }}
             title={`${course.name} · Componente: ${(COMP_META[tip.comp] || COMP_META.C).label} · ${TIPO_META[tip.tipo].label} · ${tip.agrup}`}
-            className={`text-left p-3 rounded-xl border transition-all duration-300 cursor-pointer block w-full ${style}${
+            className={`text-left p-3 rounded-xl border transition-all duration-300 block w-full ${planner ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${style}${
               showOptativas && OPTATIVAS_DATA[course.id]?.length > 0 ? ' ring-2 ring-[#8F7CC0]/60' : ''
             }`}
           >
@@ -1152,6 +1282,14 @@ function MallaSemestre({ semester, semIdx, darkMode, showOptativas, setSelectedI
                 </span>
               )}
             </div>
+            {latePrereqs.length > 0 && (
+              <span
+                className="mt-1.5 inline-flex items-center gap-1 font-sans text-[9.5px] font-bold text-[#c08a2e]"
+                title={`Requisito en semestre igual o posterior: ${latePrereqs.join(', ')}`}
+              >
+                <AlertTriangle size={11} /> Requisito después
+              </span>
+            )}
           </button>
         );
       })}

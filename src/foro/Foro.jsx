@@ -506,6 +506,7 @@ export default function ForoSection({ darkMode }) {
       .from('questions')
       .select('id, title, body, tag, status, created_at, author_id, author:profiles!questions_author_id_fkey(nickname, full_name, avatar_url), answers!answers_question_id_fkey(count)')
       .is('deleted_at', null)
+      .is('answers.deleted_at', null)
       .order('created_at', { ascending: sortOrder !== 'recientes' })
       .limit(30);
     if (tagFilter !== 'Todos') q = q.eq('tag', tagFilter);
@@ -873,6 +874,16 @@ function QuestionDetail({ darkMode, id, session, profile, canMod, sanction, onBa
     refresh();
   };
 
+  const unaccept = async () => {
+    if (!window.confirm('¿Quitar la marca de solución? El hilo volverá a estado Abierta.')) return;
+    const { error } = await supabase.from('questions').update({ accepted_answer_id: null, status: 'open' }).eq('id', id);
+    if (error) {
+      window.alert(`No se pudo quitar la marca: ${error.message}`);
+      return;
+    }
+    refresh();
+  };
+
   const toggleClose = async () => {
     await supabase.from('questions').update({ status: q.status === 'closed' ? 'open' : 'closed' }).eq('id', id);
     refresh();
@@ -880,11 +891,9 @@ function QuestionDetail({ darkMode, id, session, profile, canMod, sanction, onBa
 
   const handleDelete = async () => {
     if (!window.confirm('¿Mover este hilo a la papelera? El equipo de moderación podrá verlo y restaurarlo.')) return;
-    const { error } = await supabase.from('questions')
-      .update({ deleted_at: new Date().toISOString(), deleted_by: session.user.id })
-      .eq('id', id);
+    const { error } = await supabase.rpc('trash_question', { qid: id });
     if (error) {
-      window.alert(`No se pudo eliminar: ${error.message}`);
+      window.alert(`No se pudo eliminar: ${error.message} (código ${error.code || '?'})`);
       return;
     }
     onBack();
@@ -898,11 +907,9 @@ function QuestionDetail({ darkMode, id, session, profile, canMod, sanction, onBa
 
   const deleteAnswer = async (answerId) => {
     if (!window.confirm('¿Mover esta respuesta a la papelera? El equipo de moderación podrá verla y restaurarla.')) return;
-    const { error } = await supabase.from('answers')
-      .update({ deleted_at: new Date().toISOString(), deleted_by: session.user.id })
-      .eq('id', answerId);
+    const { error } = await supabase.rpc('trash_answer', { aid: answerId });
     if (error) {
-      window.alert(`No se pudo eliminar: ${error.message}`);
+      window.alert(`No se pudo eliminar: ${error.message} (código ${error.code || '?'})`);
       return;
     }
     refresh();
@@ -950,7 +957,14 @@ function QuestionDetail({ darkMode, id, session, profile, canMod, sanction, onBa
             <CheckCircle2 size={14} /> Solución marcada
           </p>
           <div className={`font-serif leading-relaxed mb-3 whitespace-pre-wrap ${darkMode ? 'text-[#f0eee2]/90' : 'text-[#191114]/90'}`}>{renderRichBody(accepted.body, darkMode)}</div>
-          <AuthorLine nickname={accepted.author?.nickname} fullName={accepted.author?.full_name} avatarUrl={accepted.author?.avatar_url} darkMode={darkMode} />
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <AuthorLine nickname={accepted.author?.nickname} fullName={accepted.author?.full_name} avatarUrl={accepted.author?.avatar_url} darkMode={darkMode} />
+            {(isAuthor || canMod) && (
+              <button onClick={unaccept} className="font-sans text-xs font-bold text-[#c08a2e] underline cursor-pointer bg-transparent border-none p-0">
+                Quitar marca
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -1230,8 +1244,8 @@ function PapeleraPanel({ darkMode, isAdmin, onOpenQuestion }) {
   useEffect(() => { load(); }, []);
 
   const restore = async (table, id) => {
-    const { error } = await supabase.from(table).update({ deleted_at: null, deleted_by: null }).eq('id', id);
-    if (error) window.alert(`No se pudo restaurar: ${error.message}`);
+    const { error } = await supabase.rpc('restore_item', { tbl: table, rid: id });
+    if (error) window.alert(`No se pudo restaurar: ${error.message} (código ${error.code || '?'})`);
     else load();
   };
 
