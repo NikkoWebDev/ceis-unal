@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Send, MapPin, Sparkles, ArrowLeft, Info, Moon, Sun, Eye, EyeOff, ExternalLink, Layers, GraduationCap, Lightbulb, Users } from 'lucide-react';
+import ForoSection, { ForoAuthButton } from './foro/Foro';
 
 /* ================= HOOKS ================= */
 
@@ -76,8 +77,37 @@ function smoothScrollTo(id) {
 /* ================= COMPONENTE PRINCIPAL ================= */
 
 export default function CEISLandingPage() {
-  const [currentView, setCurrentView] = useState('home');
-  const [darkMode, setDarkMode] = useState(false);
+  const [currentView, setCurrentView] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ceis-view');
+      return saved === 'malla' || saved === 'foro' ? saved : 'home';
+    } catch {
+      return 'home';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ceis-view', currentView);
+    } catch {
+      /* almacenamiento no disponible: la vista no se conserva */
+    }
+  }, [currentView]);
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      return localStorage.getItem('ceis-theme') === 'dark';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ceis-theme', darkMode ? 'dark' : 'light');
+    } catch {
+      /* almacenamiento no disponible: se usa el tema por defecto */
+    }
+  }, [darkMode]);
   const scrollProgress = useScrollProgress();
 
   const handleNavClick = useCallback((e, id) => {
@@ -110,14 +140,16 @@ export default function CEISLandingPage() {
           </button>
 
           <nav className="hidden md:flex items-center gap-7 font-sans text-sm font-medium">
-            {currentView === 'home' && (
-              <>
-                <a href="#quienes-somos" onClick={(e) => handleNavClick(e, 'quienes-somos')} className={`transition-colors ${darkMode ? 'text-[#aeb8a4] hover:text-[#f0eee2]' : 'text-[#907A67] hover:text-[#191114]'}`}>Quiénes somos</a>
-                    <a href="#objetivo" onClick={(e) => handleNavClick(e, 'objetivo')} className={`transition-colors ${darkMode ? 'text-[#aeb8a4] hover:text-[#f0eee2]' : 'text-[#907A67] hover:text-[#191114]'}`}>Nuestro Objetivo</a>
-                    <a href="#que-hacemos" onClick={(e) => handleNavClick(e, 'que-hacemos')} className={`transition-colors ${darkMode ? 'text-[#aeb8a4] hover:text-[#f0eee2]' : 'text-[#907A67] hover:text-[#191114]'}`}>Qué hacemos</a>
-              </>
-            )}
-
+            <button
+              onClick={() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className={`transition-colors font-medium bg-transparent border-none cursor-pointer text-sm ${
+                currentView === 'home'
+                  ? (darkMode ? 'text-[#c08a2e] font-bold underline' : 'text-[#3B908D] font-bold underline')
+                  : (darkMode ? 'text-[#aeb8a4] hover:text-[#f0eee2]' : 'text-[#907A67] hover:text-[#191114]')
+              }`}
+            >
+              Inicio
+            </button>
             <button
               onClick={() => { setCurrentView('malla'); window.scrollTo({ top: 0 }); }}
               className={`transition-colors font-medium bg-transparent border-none cursor-pointer text-sm ${
@@ -128,10 +160,21 @@ export default function CEISLandingPage() {
             >
               Malla Interactiva
             </button>
+            <button
+              onClick={() => { setCurrentView('foro'); window.scrollTo({ top: 0 }); }}
+              className={`transition-colors font-medium bg-transparent border-none cursor-pointer text-sm ${
+                currentView === 'foro'
+                  ? (darkMode ? 'text-[#c08a2e] font-bold underline' : 'text-[#3B908D] font-bold underline')
+                  : (darkMode ? 'text-[#aeb8a4] hover:text-[#f0eee2]' : 'text-[#907A67] hover:text-[#191114]')
+              }`}
+            >
+              Foro
+            </button>
             <a href="#contacto" onClick={(e) => handleNavClick(e, 'contacto')} className={`transition-colors ${darkMode ? 'text-[#aeb8a4] hover:text-[#f0eee2]' : 'text-[#907A67] hover:text-[#191114]'}`}>Contacto</a>
           </nav>
 
           <div className="flex items-center gap-4">
+            <ForoAuthButton />
             <button
               onClick={() => setDarkMode(!darkMode)}
               className={`p-2.5 rounded-lg border cursor-pointer transition-all duration-300 ${
@@ -141,13 +184,6 @@ export default function CEISLandingPage() {
             >
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <a
-              href="#contacto"
-              onClick={(e) => handleNavClick(e, 'contacto')}
-              className="btn-magnetic font-sans text-sm font-semibold px-5 py-2.5 rounded-lg text-white bg-gradient-to-r from-[#3B908D] to-[#18514A] shadow-md"
-            >
-              Escríbenos
-            </a>
           </div>
         </div>
         {/* Scroll Progress Bar */}
@@ -168,7 +204,7 @@ export default function CEISLandingPage() {
             <ObjetivoSection darkMode={darkMode} />
             <PilaresSection darkMode={darkMode} />
           </>
-        ) : (
+        ) : currentView === 'malla' ? (
           <div className="py-12 w-full animate-fadeIn">
             <div className="max-w-[1400px] mx-auto px-7">
               <button
@@ -198,6 +234,8 @@ export default function CEISLandingPage() {
               </div>
             </div>
           </div>
+        ) : (
+          <ForoSection darkMode={darkMode} />
         )}
 
         <ContactoSection />
@@ -343,9 +381,9 @@ function PilaresSection({ darkMode }) {
   return (
     <section id="que-hacemos" className={`py-20 border-b transition-colors duration-300 ${darkMode ? 'border-[#f0eee2]/10' : 'border-[#907A67]/20'}`}>
       <div className="max-w-[1120px] mx-auto px-7">
-        <div ref={headerRef} className={`animate-in-fade-up text-center mb-12${headerVisible ? ' is-visible' : ''}`}>
-          <p className={`font-sans text-[13.5px] font-semibold mb-3 tracking-wide uppercase ${darkMode ? 'text-[#82B475]' : 'text-[#3B908D]'}`}>Qué hacemos</p>
-          <h2 className={`font-sans text-3xl md:text-4xl font-bold tracking-tight ${darkMode ? 'text-[#f0eee2]' : 'text-[#191114]'}`}>Un espacio creado por y para estudiantes</h2>
+        <div ref={headerRef} className={`animate-in-fade-up text-center mb-14${headerVisible ? ' is-visible' : ''}`}>
+          <p className={`font-sans text-[13.5px] font-semibold mb-4 tracking-wide uppercase ${darkMode ? 'text-[#82B475]' : 'text-[#3B908D]'}`}>Qué hacemos</p>
+          <h2 className={`font-sans text-3xl md:text-4xl font-bold tracking-tight leading-snug max-w-[22ch] mx-auto ${darkMode ? 'text-[#f0eee2]' : 'text-[#191114]'}`}>Un espacio creado por y para estudiantes</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {pilares.map((pilar, i) => (
