@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
-import { Send, MapPin, Sparkles, ArrowLeft, Info, Moon, Sun, Eye, EyeOff, ExternalLink, Layers, GraduationCap, Lightbulb, Users, AlertTriangle } from 'lucide-react';
+import { Send, MapPin, Sparkles, ArrowLeft, ArrowDown, Info, Moon, Sun, Eye, EyeOff, ExternalLink, Layers, GraduationCap, Lightbulb, Users, AlertTriangle, MessageSquare } from 'lucide-react';
 import ForoSection, { ForoAuthButton } from './foro/Foro';
 
 /* ================= HOOKS ================= */
@@ -199,7 +199,10 @@ export default function CEISLandingPage() {
       <main className="flex-grow">
         {currentView === 'home' ? (
           <>
-            <HeroSection onVerMalla={() => { setCurrentView('malla'); window.scrollTo({ top: 0 }); }} />
+            <HeroSection
+              onVerMalla={() => { setCurrentView('malla'); window.scrollTo({ top: 0 }); }}
+              onVerForo={() => { setCurrentView('foro'); window.scrollTo({ top: 0 }); }}
+            />
             <QuienesSomosSection darkMode={darkMode} />
             <ObjetivoSection darkMode={darkMode} />
             <PilaresSection darkMode={darkMode} />
@@ -209,7 +212,7 @@ export default function CEISLandingPage() {
             <div className="max-w-[1400px] mx-auto px-7">
               <button
                 onClick={() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                className={`inline-flex items-center gap-2 text-sm font-sans font-semibold mb-8 bg-transparent border-none cursor-pointer p-0 transition-colors ${
+                className={`inline-flex items-center gap-2 text-sm font-sans fontnpm run build-semibold mb-8 bg-transparent border-none cursor-pointer p-0 transition-colors ${
                   darkMode ? 'text-[#82B475] hover:underline' : 'text-[#3B908D] hover:underline'
                 }`}
               >
@@ -246,7 +249,7 @@ export default function CEISLandingPage() {
 
 /* ================= SECCIÓN HERO ================= */
 
-function HeroSection({ onVerMalla }) {
+function HeroSection({ onVerMalla, onVerForo }) {
   const parallaxOffset = useParallax(0.25);
   const { rotation, opacity } = useHeroRotation();
   const [titleRef, titleVisible] = useScrollAnimation(0.1);
@@ -276,6 +279,12 @@ function HeroSection({ onVerMalla }) {
               className="btn-magnetic inline-flex items-center gap-2 text-sm font-semibold px-6 py-3 rounded-xl text-white bg-gradient-to-r from-[#3B908D] to-[#82B475] shadow-lg shadow-[#3B908D]/20 cursor-pointer border-none"
             >
               Ver Malla Curricular <GraduationCap size={16} />
+            </button>
+            <button
+              onClick={onVerForo}
+              className="btn-magnetic inline-flex items-center gap-2 text-sm font-semibold px-6 py-3 rounded-xl border border-[#F6EEE8]/25 text-[#F6EEE8] hover:bg-[#F6EEE8]/10 transition-colors cursor-pointer"
+            >
+              Entrar al foro <MessageSquare size={16} />
             </button>
           </div>
         </div>
@@ -381,7 +390,7 @@ function PilaresSection({ darkMode }) {
   return (
     <section id="que-hacemos" className={`py-20 border-b transition-colors duration-300 ${darkMode ? 'border-[#f0eee2]/10' : 'border-[#907A67]/20'}`}>
       <div className="max-w-[1120px] mx-auto px-7">
-        <div ref={headerRef} className={`animate-in-fade-up text-center mb-14${headerVisible ? ' is-visible' : ''}`}>
+        <div ref={headerRef} className={`animate-in-fade-up text-center mb-16 md:mb-20${headerVisible ? ' is-visible' : ''}`}>
           <p className={`font-sans text-[13.5px] font-semibold mb-4 tracking-wide uppercase ${darkMode ? 'text-[#82B475]' : 'text-[#3B908D]'}`}>Qué hacemos</p>
           <h2 className={`font-sans text-3xl md:text-4xl font-bold tracking-tight leading-snug max-w-[22ch] mx-auto ${darkMode ? 'text-[#f0eee2]' : 'text-[#191114]'}`}>Un espacio creado por y para estudiantes</h2>
         </div>
@@ -972,7 +981,7 @@ function MallaInteractiva({ darkMode }) {
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="font-bold px-1 rounded-sm bg-[#8F7CC0]/20 text-[#8F7CC0]">+N EQ</span>
-          Tiene equivalencias registradas para ver
+          Baja para ver sus equivalencias <ArrowDown size={13} className="text-[#8F7CC0]" />
         </span>
       </div>
 
@@ -1277,7 +1286,10 @@ function MallaSemestre({ semester, semIdx, darkMode, showOptativas, onSelectCour
                 {isOpt ? 'OPT' : tip.comp} · {TIPO_META[tip.tipo].label}
               </span>
               {OPTATIVAS_DATA[course.id]?.length > 0 && showOptativas && (
-                <span className="font-sans text-[9px] font-bold px-1 rounded-sm bg-[#8F7CC0]/20 text-[#8F7CC0] ml-auto">
+                <span
+                  title="Esta materia tiene equivalencias: selecciónala y baja para verlas"
+                  className="font-sans text-[9px] font-bold px-1 rounded-sm bg-[#8F7CC0]/20 text-[#8F7CC0] ml-auto"
+                >
                   +{OPTATIVAS_DATA[course.id].length} EQ
                 </span>
               )}
