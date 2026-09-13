@@ -539,11 +539,21 @@ export default function ForoSection({ darkMode }) {
   return (
     <div className="py-12 w-full">
       <div className="max-w-[1120px] mx-auto px-7">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <p className={`font-sans text-[13.5px] font-semibold mb-3 tracking-wide uppercase ${darkMode ? 'text-[#82B475]' : 'text-[#3B908D]'}`}>Comunidad</p>
           <h2 className={`font-sans text-3xl md:text-4xl font-bold tracking-tight ${darkMode ? 'text-[#f0eee2]' : 'text-[#191114]'}`}>Foro de preguntas</h2>
           <p className={`font-serif mt-3 max-w-[60ch] mx-auto ${darkMode ? 'text-[#aeb8a4]' : 'text-[#907A67]'}`}>
             Pregunta, responde y consulta: las dudas resueltas quedan como referencia para toda la comunidad. Solo cuentas @unal.edu.co pueden participar.
+          </p>
+        </div>
+
+        <div className={`max-w-3xl mx-auto mb-8 p-4 rounded-2xl border font-sans text-xs leading-relaxed ${darkMode ? 'bg-[#152218] border-[#f0eee2]/15 text-[#aeb8a4]' : 'bg-[#E6E2D0]/40 border-[#907A67]/25 text-[#191114]/80'}`}>
+          <p className="m-0 flex items-start gap-2">
+            <ShieldCheck size={15} className="shrink-0 mt-0.5 text-[#3B908D]" />
+            <span>
+              <strong>Moderación comunitaria:</strong> el foro lo modera el equipo CEIS (roles moderador/admin). Puedes reportar cualquier publicación con <Flag size={11} className="inline" /> y el equipo puede ocultar, cerrar o sancionar según las normas.
+              Para no perder valor, los hilos cerrados quedan como referencia y la papelera es reversible. ¿Quieres ayudar a moderar? Escríbenos a ceisunal@gmail.com.
+            </span>
           </p>
         </div>
 

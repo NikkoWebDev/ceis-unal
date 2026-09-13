@@ -486,7 +486,7 @@ const MALLA_DATA = [
   {
     semester: 1,
     courses: [
-      { id: '1000004', code: '1000004', name: 'Cálculo Diferencial', credits: 4, prereqs: [] },
+      { id: '1000004', code: '1000004', name: 'Cálculo Diferencial', credits: 4, prereqs: ['NIV-MAT'] },
       { id: '2025975', code: '2025975', name: 'Introducción a la ingeniería de sistemas y computación', credits: 3, prereqs: [] },
       { id: '2015734', code: '2015734', name: 'Programación de Computadores', credits: 3, prereqs: [] },
       { id: '2016703', code: '2016703', name: 'Pensamiento Sistémico', credits: 3, prereqs: [] },
@@ -584,6 +584,20 @@ const MALLA_DATA = [
   }
 ];
 
+/* ============ NIVELACIÓN (20 CR, no cuentan en los 165 del plan) ============
+   4 CR Matemáticas Básicas (prerrequisito de Cálculo Diferencial) ·
+   12 CR Inglés (4 niveles de 3 CR, en cadena) ·
+   4 CR Lectoescritura (pocos la cursan; la mayoría la valida).
+   Se muestran en la columna "Nivelación" (semestre 0). Ocúltalas si ya las validaste. */
+const NIVELACION_COURSES = [
+  { id: 'NIV-MAT', code: 'NIV', name: 'Matemáticas Básicas', credits: 4, prereqs: [] },
+  { id: 'NIV-ING1', code: 'NIV', name: 'Inglés I', credits: 3, prereqs: [] },
+  { id: 'NIV-ING2', code: 'NIV', name: 'Inglés II', credits: 3, prereqs: ['NIV-ING1'] },
+  { id: 'NIV-ING3', code: 'NIV', name: 'Inglés III', credits: 3, prereqs: ['NIV-ING2'] },
+  { id: 'NIV-ING4', code: 'NIV', name: 'Inglés IV', credits: 3, prereqs: ['NIV-ING3'] },
+  { id: 'NIV-LEC', code: 'NIV', name: 'Lectoescritura', credits: 4, prereqs: [] },
+];
+
 /* ============ RESOLUCIÓN BASE DE LA MALLA ============ */
 const RESOLUCION_URL = 'https://legal.unal.edu.co/rlunal/home/doc.jsp?d_i=106142';
 
@@ -639,6 +653,7 @@ const COMP_META = {
   C: { label: 'Formación profesional', color: '#3B908D' },
   L: { label: 'Libre elección', color: '#907A67' },
   T: { label: 'Trabajo de grado', color: '#c08a2e' },
+  N: { label: 'Nivelación', color: '#9a9a9a' },
 };
 
 const TIPO_META = {
@@ -646,26 +661,43 @@ const TIPO_META = {
   OP: { label: 'Optativa' },
   L: { label: 'Libre elección' },
   TG: { label: 'Trabajo de grado' },
+  NIV: { label: 'Nivelación' },
 };
 
 function getTipologia(course) {
+  if (!course) return { comp: 'C', agrup: 'Plan de estudios', tipo: 'OB' };
   if (course.id === 'TRAB-GRADO') return { comp: 'T', agrup: 'Trabajo de grado', tipo: 'TG' };
-  if (course.code === 'LIB' || course.id.startsWith('LIB')) return { comp: 'L', agrup: 'Libre elección', tipo: 'L' };
+  if (String(course.id || '').startsWith('NIV-')) return { comp: 'N', agrup: 'Nivelación (no cuenta en 165)', tipo: 'NIV' };
+  if (course.custom || course.code === 'LIB' || course.id.startsWith('LIB') || course.code === 'ELEC') return { comp: 'L', agrup: 'Libre elección', tipo: 'L' };
   return TIPOLOGIA[course.id] || { comp: 'C', agrup: 'Plan de estudios', tipo: 'OB' };
 }
 
 /* ============ PLANIFICADOR: layout personalizado por semestre ============ */
-function buildPlanSemesters(layout) {
+function buildPlanSemesters(layout, extraCourses = [], hiddenIds = null) {
+  const hidden = hiddenIds instanceof Set ? hiddenIds : new Set(Array.isArray(hiddenIds) ? hiddenIds : []);
   const cols = new Map();
+  const all = [];
+  NIVELACION_COURSES.forEach(c => {
+    if (!hidden.has(c.id)) all.push({ course: c, home: 0 });
+  });
   MALLA_DATA.forEach(sem => sem.courses.forEach(c => {
-    const raw = layout[c.id];
-    const target = Number.isInteger(raw) ? Math.min(Math.max(raw, 1), 20) : sem.semester;
-    if (!cols.has(target)) cols.set(target, []);
-    cols.get(target).push(c);
+    if (!hidden.has(c.id)) all.push({ course: c, home: sem.semester });
   }));
+  (extraCourses || []).forEach(c => {
+    if (c && c.id && !hidden.has(c.id)) all.push({ course: c, home: 9 });
+  });
+  all.forEach(({ course, home }) => {
+    const raw = layout[course.id];
+    const target = Number.isInteger(raw) ? Math.min(Math.max(raw, 0), 20) : home;
+    if (!cols.has(target)) cols.set(target, []);
+    cols.get(target).push(course);
+  });
   const max = Math.max(10, ...cols.keys());
   const out = [];
-  for (let n = 1; n <= max; n++) out.push({ semester: n, courses: cols.get(n) || [] });
+  for (let n = 0; n <= max; n++) {
+    if (n === 0 && (cols.get(0) || []).length === 0) continue;
+    out.push({ semester: n, courses: cols.get(n) || [] });
+  }
   return out.filter(s => s.semester <= 10 || s.courses.length > 0);
 }
 
@@ -673,6 +705,154 @@ function buildSemMap(semesters) {
   const m = {};
   semesters.forEach(sem => sem.courses.forEach(c => { m[c.id] = sem.semester; }));
   return m;
+}
+
+/* ============ LÍMITES ACUERDO 11 (Acuerdo 003A de 2022, Consejo Académico) ============
+   165 créditos totales: Fundamentación 51 (15 OB + 36 OP) ·
+   Disciplinar/Profesional 81 (39 OB + 42 OP, incluye Trabajo de Grado como OB) ·
+   Libre Elección 33 (20 % del plan). */
+const LIMITES_ACUERDO = {
+  B: { total: 51, OB: 15, OP: 36 },
+  C: { total: 81, OB: 39, OP: 42 },
+  L: { total: 33 },
+  TOTAL: 165,
+};
+
+// Clasificación para conteo de límites: las ELEC propias y LIB cuentan como L;
+// Trabajo de Grado cuenta para el total disciplinar (81) pero no para los
+// subtopes OB 39 / OP 42 — así la malla oficial (39 OB + 36 OP + 6 TG = 81) no marca exceso falso.
+function classifyForLimits(course) {
+  if (!course) return { comp: 'C', tipo: 'OB' };
+  if (String(course.id || '').startsWith('NIV-')) return { comp: 'N', tipo: 'NIV' };
+  if (course.custom || course.code === 'LIB' || String(course.id || '').startsWith('LIB')) return { comp: 'L', tipo: 'L' };
+  if (course.id === 'TRAB-GRADO') return { comp: 'C', tipo: 'TG' };
+  const tip = TIPOLOGIA[course.id];
+  if (!tip) return { comp: 'C', tipo: 'OB' };
+  if (tip.comp === 'L') return { comp: 'L', tipo: 'L' };
+  if (tip.comp === 'T') return { comp: 'C', tipo: 'TG' };
+  return { comp: tip.comp, tipo: tip.tipo === 'OP' ? 'OP' : 'OB' };
+}
+
+function computeComponentTotals(courses) {
+  const totals = { B: { total: 0, OB: 0, OP: 0 }, C: { total: 0, OB: 0, OP: 0, TG: 0 }, L: { total: 0 }, total: 0 };
+  (courses || []).forEach(c => {
+    const cr = c.credits || 0;
+    const { comp, tipo } = classifyForLimits(c);
+    if (comp === 'N') return; // nivelación: 20 CR aparte, no cuentan en los 165
+    totals.total += cr;
+    if (comp === 'L') totals.L.total += cr;
+    else if (comp === 'B' || comp === 'C') {
+      totals[comp].total += cr;
+      if (tipo === 'OP') totals[comp].OP += cr;
+      else if (tipo === 'OB') totals[comp].OB += cr;
+      else if (tipo === 'TG' && comp === 'C') totals[comp].TG += cr;
+    }
+  });
+  return totals;
+}
+
+/* ============ DIAGNÓSTICO DEL PLAN (prerrequisitos, carga, horarios) ============
+   Responde al feedback docente: corregir prerrequisitos en modo planificación,
+   advertir sobrecarga y detectar cruces de horario según la oferta del SIA. */
+const CARGA_MAX_RECOMENDADA = 20;
+const CARGA_ALTA_DESDE = 19;
+const CARGA_BAJA_HASTA = 12;
+const DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+function timeToMin(t) {
+  if (typeof t === 'number') return t;
+  const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const h = Number(m[1]); const mm = Number(m[2]);
+  if (h < 0 || h > 23 || mm < 0 || mm > 59) return null;
+  return h * 60 + mm;
+}
+
+function minToTime(min) {
+  const h = Math.floor(min / 60); const m = min % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function analyzePlan(semesters, semMap, byId, schedules = {}) {
+  const prereqErrors = [];
+  const perSem = {};
+  const invalidIds = new Set();
+  semesters.forEach(sem => {
+    const credits = sem.courses.reduce((a, c) => a + (c.credits || 0), 0);
+    perSem[sem.semester] = { credits, count: sem.courses.length };
+  });
+  semesters.forEach(sem => sem.courses.forEach(course => {
+    (course.prereqs || []).forEach(pid => {
+      const semP = semMap[pid];
+      const semC = semMap[course.id];
+      if (semP === undefined) return; // prerrequisito fuera del plan visible: se ignora
+      if (semP === 0 && semC === 0) return; // ambos en Nivelación (bandeja por ubicar): no se juzga orden
+      if (semP >= semC) {
+        const pre = byId[pid];
+        prereqErrors.push({
+          course, prereq: pre || { id: pid, code: pid, name: pid },
+          semCourse: semC, semPrereq: semP, same: semP === semC,
+        });
+        invalidIds.add(course.id);
+        invalidIds.add(pid);
+      }
+    });
+  }));
+  // Carga por semestre (se excluye semestre 0 de nivelación: va aparte)
+  const cargaAlta = [];
+  const cargaExcesiva = [];
+  const cargaBaja = [];
+  const vacios = [];
+  const lastNonEmpty = Math.max(0, ...semesters.filter(s => s.semester > 0 && s.courses.length > 0).map(s => s.semester));
+  semesters.forEach(sem => {
+    if (sem.semester === 0) return;
+    const { credits, count } = perSem[sem.semester];
+    if (count === 0 && sem.semester < lastNonEmpty) vacios.push(sem.semester);
+    else if (credits > CARGA_MAX_RECOMENDADA) cargaExcesiva.push({ sem: sem.semester, credits });
+    else if (credits >= CARGA_ALTA_DESDE) cargaAlta.push({ sem: sem.semester, credits });
+    else if (count > 0 && credits <= CARGA_BAJA_HASTA && sem.semester <= 8) cargaBaja.push({ sem: sem.semester, credits });
+  });
+  // Cruces de horario dentro del mismo semestre
+  const cruces = [];
+  semesters.forEach(sem => {
+    const list = sem.courses.filter(c => (schedules[c.id] || []).length > 0);
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const a = list[i]; const b = list[j];
+        (schedules[a.id] || []).forEach(sa => {
+          (schedules[b.id] || []).forEach(sb => {
+            if (sa.day !== sb.day) return;
+            if (sa.start < sb.end && sb.start < sa.end) {
+              cruces.push({
+                sem: sem.semester, a, b, day: sa.day,
+                overlapStart: Math.max(sa.start, sb.start),
+                overlapEnd: Math.min(sa.end, sb.end),
+              });
+            }
+          });
+        });
+      }
+    }
+  });
+  // Créditos por componente (Acuerdo 11 / Acuerdo 003A de 2022)
+  const allCourses = semesters.flatMap(s => s.courses);
+  const compTotals = computeComponentTotals(allCourses);
+  const compExcess = [];
+  if (compTotals.B.total > LIMITES_ACUERDO.B.total) compExcess.push({ comp: 'B', kind: 'total', actual: compTotals.B.total, max: LIMITES_ACUERDO.B.total, label: `Fundamentación: ${compTotals.B.total}/${LIMITES_ACUERDO.B.total} CR (OB ${compTotals.B.OB}/${LIMITES_ACUERDO.B.OB} · OP ${compTotals.B.OP}/${LIMITES_ACUERDO.B.OP})` });
+  if (compTotals.B.OB > LIMITES_ACUERDO.B.OB) compExcess.push({ comp: 'B', kind: 'OB', actual: compTotals.B.OB, max: LIMITES_ACUERDO.B.OB, label: `Fundamentación obligatoria: ${compTotals.B.OB}/${LIMITES_ACUERDO.B.OB} CR` });
+  if (compTotals.B.OP > LIMITES_ACUERDO.B.OP) compExcess.push({ comp: 'B', kind: 'OP', actual: compTotals.B.OP, max: LIMITES_ACUERDO.B.OP, label: `Fundamentación optativa: ${compTotals.B.OP}/${LIMITES_ACUERDO.B.OP} CR` });
+  if (compTotals.C.total > LIMITES_ACUERDO.C.total) compExcess.push({ comp: 'C', kind: 'total', actual: compTotals.C.total, max: LIMITES_ACUERDO.C.total, label: `Disciplinar/Profesional: ${compTotals.C.total}/${LIMITES_ACUERDO.C.total} CR (OB ${compTotals.C.OB}/${LIMITES_ACUERDO.C.OB} · OP ${compTotals.C.OP}/${LIMITES_ACUERDO.C.OP} · TG ${compTotals.C.TG || 0})` });
+  if (compTotals.C.OB > LIMITES_ACUERDO.C.OB) compExcess.push({ comp: 'C', kind: 'OB', actual: compTotals.C.OB, max: LIMITES_ACUERDO.C.OB, label: `Disciplinar obligatoria: ${compTotals.C.OB}/${LIMITES_ACUERDO.C.OB} CR` });
+  if (compTotals.C.OP > LIMITES_ACUERDO.C.OP) compExcess.push({ comp: 'C', kind: 'OP', actual: compTotals.C.OP, max: LIMITES_ACUERDO.C.OP, label: `Disciplinar optativa: ${compTotals.C.OP}/${LIMITES_ACUERDO.C.OP} CR` });
+  if (compTotals.L.total > LIMITES_ACUERDO.L.total) compExcess.push({ comp: 'L', kind: 'total', actual: compTotals.L.total, max: LIMITES_ACUERDO.L.total, label: `Libre elección: ${compTotals.L.total}/${LIMITES_ACUERDO.L.total} CR — quita plantillas LIB o baja créditos de tus ELEC` });
+  if (compTotals.total > LIMITES_ACUERDO.TOTAL) compExcess.push({ comp: 'T', kind: 'total', actual: compTotals.total, max: LIMITES_ACUERDO.TOTAL, label: `Total plan: ${compTotals.total}/${LIMITES_ACUERDO.TOTAL} CR` });
+  // Nivelación (20 CR aparte, no cuentan en 165): pendientes vs validadas (ocultas)
+  const nivVisible = allCourses.filter(c => String(c.id || '').startsWith('NIV-'));
+  const nivCredits = nivVisible.reduce((a, c) => a + (c.credits || 0), 0);
+  const nivPending = nivVisible.map(c => c.id);
+  const nivSummary = { total: 20, pending: nivCredits, pendingIds: nivPending, done: 20 - nivCredits };
+  return { prereqErrors, perSem, invalidIds, cargaAlta, cargaExcesiva, cargaBaja, vacios, cruces, compTotals, compExcess, nivSummary,
+    hasIssues: prereqErrors.length > 0 || cargaExcesiva.length > 0 || cruces.length > 0 || compExcess.length > 0 };
 }
 
 /* ============ OPTATIVAS EQUIVALENTES (Acuerdo 11 de 2023) ============
@@ -784,9 +964,41 @@ function MallaInteractiva({ darkMode }) {
   const [showOptativas, setShowOptativas] = useState(true);
   const [planner, setPlanner] = useState(false);
   const [dropSem, setDropSem] = useState(null);
+  const [showDiag, setShowDiag] = useState(true);
+  const [showSchedule, setShowSchedule] = useState(false);
   const [customLayout, setCustomLayout] = useState(() => {
     try {
       const raw = localStorage.getItem('ceis-plan-v1');
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
+  // Electivas personalizadas (libre elección: Explora, Astronomía para todos, etc.)
+  const [customCourses, setCustomCourses] = useState(() => {
+    try {
+      const raw = localStorage.getItem('ceis-custom-courses-v1');
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter(c => c && c.id && c.name) : [];
+    } catch {
+      return [];
+    }
+  });
+  // Libre Elección de plantilla ocultas (LIB-01..LIB-09): estorban al poner ELEC propias
+  const [hiddenIds, setHiddenIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem('ceis-hidden-v1');
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter(id => typeof id === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
+  // Horarios por materia para revisar cruces según oferta del SIA: {courseId: [{day, start, end}]}
+  const [schedules, setSchedules] = useState(() => {
+    try {
+      const raw = localStorage.getItem('ceis-schedules-v1');
       const parsed = raw ? JSON.parse(raw) : {};
       return parsed && typeof parsed === 'object' ? parsed : {};
     } catch {
@@ -801,6 +1013,21 @@ function MallaInteractiva({ darkMode }) {
       /* sin almacenamiento: el plan solo vive en memoria */
     }
   }, [customLayout]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('ceis-custom-courses-v1', JSON.stringify(customCourses));
+    } catch { /* sin almacenamiento */ }
+  }, [customCourses]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('ceis-hidden-v1', JSON.stringify(hiddenIds));
+    } catch { /* sin almacenamiento */ }
+  }, [hiddenIds]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('ceis-schedules-v1', JSON.stringify(schedules));
+    } catch { /* sin almacenamiento */ }
+  }, [schedules]);
   const [lines, setLines] = useState([]);
   const [svgSize, setSvgSize] = useState({ width: '100%', height: '100%' });
   const containerRef = useRef(null);
@@ -808,6 +1035,10 @@ function MallaInteractiva({ darkMode }) {
 
   const getSelectedCourse = () => {
     if (!selectedId) return null;
+    const foundCustom = customCourses.find(c => c.id === selectedId);
+    if (foundCustom) return foundCustom;
+    const foundNiv = NIVELACION_COURSES.find(c => c.id === selectedId);
+    if (foundNiv) return foundNiv;
     for (const sem of MALLA_DATA) {
       const course = sem.courses.find(c => c.id === selectedId);
       if (course) return course;
@@ -819,20 +1050,98 @@ function MallaInteractiva({ darkMode }) {
 
   const toggleCourse = (id) => setSelectedId(prev => (prev === id ? null : id));
 
-  const semesters = planner ? buildPlanSemesters(customLayout) : MALLA_DATA;
+  const hiddenSet = new Set(hiddenIds);
+  const officialSemesters = [
+    { semester: 0, courses: NIVELACION_COURSES.filter(c => !hiddenSet.has(c.id)) },
+    ...MALLA_DATA.map(sem => ({ ...sem, courses: sem.courses.filter(c => !hiddenSet.has(c.id)) })),
+  ].filter(s => s.semester === 0 ? s.courses.length > 0 : true);
+  const semesters = planner ? buildPlanSemesters(customLayout, customCourses, hiddenIds) : officialSemesters;
   const semMap = planner ? buildSemMap(semesters) : null;
-  const maxSem = semesters[semesters.length - 1].semester;
+  const maxSem = semesters.length > 0 ? semesters[semesters.length - 1].semester : 10;
+  const byId = {};
+  semesters.forEach(sem => sem.courses.forEach(c => { byId[c.id] = c; }));
+  const diag = planner && semMap ? analyzePlan(semesters, semMap, byId, schedules) : null;
+  const libTemplate = MALLA_DATA.flatMap(sem => sem.courses
+    .filter(c => String(c.id).startsWith('LIB'))
+    .map(c => ({ ...c, home: sem.semester, hidden: hiddenSet.has(c.id) })));
+  const nivTemplate = NIVELACION_COURSES.map(c => ({ ...c, home: 0, hidden: hiddenSet.has(c.id) }));
 
   const moveCourse = (id, target) => {
-    if (!id || !Number.isInteger(target) || target < 1) return;
+    if (!id || !Number.isInteger(target) || target < 0) return;
     setCustomLayout(prev => ({ ...prev, [id]: Math.min(target, 20) }));
     setDropSem(null);
   };
 
+  const addCustomCourse = ({ name, credits, semester }) => {
+    const clean = String(name || '').trim();
+    const cr = Math.min(Math.max(Number(credits) || 2, 1), 6);
+    const sem = Math.min(Math.max(Number(semester) || 9, 1), 20);
+    if (!clean) return;
+    const id = `CUSTOM-${Date.now().toString(36)}`;
+    const course = { id, code: 'ELEC', name: clean, credits: cr, prereqs: [], custom: true };
+    setCustomCourses(prev => [...prev, course]);
+    setCustomLayout(prev => ({ ...prev, [id]: sem }));
+  };
+
+  const removeCustomCourse = (id) => {
+    setCustomCourses(prev => prev.filter(c => c.id !== id));
+    setCustomLayout(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setSchedules(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    if (selectedId === id) setSelectedId(null);
+  };
+
+  const hideCourse = (id) => {
+    if (!id) return;
+    setHiddenIds(prev => (prev.includes(id) ? prev : [...prev, id]));
+    setSchedules(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    if (selectedId === id) setSelectedId(null);
+  };
+
+  const restoreCourse = (id) => {
+    setHiddenIds(prev => prev.filter(x => x !== id));
+  };
+
+  const restoreAllLib = () => setHiddenIds([]);
+
+  const addSlot = (courseId, day, startStr, endStr) => {
+    const start = timeToMin(startStr); const end = timeToMin(endStr);
+    if (!DIAS_SEMANA.includes(day) || start === null || end === null || end <= start) return false;
+    setSchedules(prev => ({ ...prev, [courseId]: [...(prev[courseId] || []), { day, start, end }] }));
+    return true;
+  };
+
+  const removeSlot = (courseId, idx) => {
+    setSchedules(prev => ({ ...prev, [courseId]: (prev[courseId] || []).filter((_, i) => i !== idx) }));
+  };
+
   const resetPlan = () => {
     setCustomLayout({});
+    setHiddenIds([]);
+    setCustomCourses([]);
+    setSchedules(prev => {
+      const next = {};
+      Object.entries(prev || {}).forEach(([cid, slots]) => {
+        if (!String(cid).startsWith('CUSTOM-')) next[cid] = slots;
+      });
+      return next;
+    });
+    setSelectedId(null);
     try {
       localStorage.removeItem('ceis-plan-v1');
+      localStorage.removeItem('ceis-hidden-v1');
+      localStorage.removeItem('ceis-custom-courses-v1');
     } catch {
       /* sin almacenamiento */
     }
@@ -840,7 +1149,7 @@ function MallaInteractiva({ darkMode }) {
   const selectedTip = selectedCourse ? getTipologia(selectedCourse) : null;
   const recordedOpts = selectedId ? (OPTATIVAS_DATA[selectedId] || []) : [];
   const unlockCount = selectedId
-    ? MALLA_DATA.flatMap(s => s.courses).filter(c => c.prereqs.includes(selectedId)).length
+    ? [...NIVELACION_COURSES, ...MALLA_DATA.flatMap(s => s.courses), ...customCourses].filter(c => (c.prereqs || []).includes(selectedId)).length
     : 0;
 
   useLayoutEffect(() => {
@@ -881,7 +1190,7 @@ function MallaInteractiva({ darkMode }) {
       });
 
       MALLA_DATA.forEach(sem => sem.courses.forEach(c => {
-        if (c.prereqs.includes(selectedId)) {
+        if ((c.prereqs || []).includes(selectedId)) {
           const unlockEl = courseRefs.current[c.id];
           if (unlockEl) {
             const uRect = unlockEl.getBoundingClientRect();
@@ -895,6 +1204,21 @@ function MallaInteractiva({ darkMode }) {
           }
         }
       }));
+      [...NIVELACION_COURSES, ...customCourses].forEach(c => {
+        if ((c.prereqs || []).includes(selectedId)) {
+          const unlockEl = courseRefs.current[c.id];
+          if (unlockEl) {
+            const uRect = unlockEl.getBoundingClientRect();
+            newLines.push({
+              x1: (selectedRect.right - containerRect.left) + scrollLeft,
+              y1: (selectedRect.top + selectedRect.height / 2 - containerRect.top) + scrollTop,
+              x2: (uRect.left - containerRect.left) + scrollLeft,
+              y2: (uRect.top + uRect.height / 2 - containerRect.top) + scrollTop,
+              color: '#c08a2e'
+            });
+          }
+        }
+      });
 
       setLines(newLines);
     };
@@ -986,19 +1310,65 @@ function MallaInteractiva({ darkMode }) {
       </div>
 
       {planner && (
-        <div className={`mb-8 flex flex-wrap items-center justify-between gap-3 font-sans text-sm py-3 px-4 rounded-xl border ${
+        <div className={`mb-4 flex flex-wrap items-center justify-between gap-3 font-sans text-sm py-3 px-4 rounded-xl border ${
           darkMode ? 'bg-[#3B908D]/10 border-[#3B908D]/40 text-[#f0eee2]' : 'bg-[#3B908D]/10 border-[#3B908D]/40 text-[#191114]'
         }`}>
           <span>
             Modo planificación: <strong>arrastra</strong> las materias entre semestres o a la columna “+ Nuevo” para simular tu plan. Se guarda en este navegador.
+            Ahora el plan <strong>sí corrige prerrequisitos</strong>: mira el panel de validación abajo.
           </span>
-          <span className="flex items-center gap-3">
-            <span className="text-xs opacity-80">{Object.keys(customLayout).length} movidas</span>
+          <span className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs opacity-80">{Object.keys(customLayout).length} movidas · {customCourses.length} electivas propias{hiddenIds.length > 0 ? ` · ${hiddenIds.length} LIB ocultas` : ''}</span>
+            <button onClick={() => setShowDiag(v => !v)} className="text-xs font-bold underline bg-transparent border-none cursor-pointer p-0 text-[#3B908D]">
+              {showDiag ? 'Ocultar validación' : 'Ver validación'}
+            </button>
+            <button onClick={() => setShowSchedule(v => !v)} className="text-xs font-bold underline bg-transparent border-none cursor-pointer p-0 text-[#3B908D]">
+              {showSchedule ? 'Ocultar horarios' : 'Revisar horarios SIA'}
+            </button>
             <button onClick={resetPlan} className="text-xs font-bold text-[#c08a2e] underline bg-transparent border-none cursor-pointer p-0">
               Restablecer oficial
             </button>
           </span>
         </div>
+      )}
+
+      {planner && showDiag && diag && (
+        <PlanDiagnostics darkMode={darkMode} diag={diag} />
+      )}
+
+      {planner && (
+        <NivelacionManager
+          darkMode={darkMode}
+          nivTemplate={nivTemplate}
+          onHide={hideCourse}
+          onRestore={restoreCourse}
+          onRestoreAll={restoreAllLib}
+        />
+      )}
+
+      {planner && (
+        <ElectiveManager
+          darkMode={darkMode}
+          customCourses={customCourses}
+          onAdd={addCustomCourse}
+          onRemove={removeCustomCourse}
+          maxSem={maxSem}
+          libTemplate={libTemplate}
+          onHideLib={hideCourse}
+          onRestore={restoreCourse}
+          onRestoreAll={restoreAllLib}
+        />
+      )}
+
+      {planner && showSchedule && (
+        <ScheduleChecker
+          darkMode={darkMode}
+          semesters={semesters}
+          schedules={schedules}
+          diag={diag}
+          onAddSlot={addSlot}
+          onRemoveSlot={removeSlot}
+        />
       )}
 
       <div className="overflow-x-auto pb-12 relative" ref={containerRef}>
@@ -1039,6 +1409,11 @@ function MallaInteractiva({ darkMode }) {
               dropActive={planner && dropSem === semester.semester}
               onDropSemester={moveCourse}
               onOverSemester={setDropSem}
+              invalidIds={diag?.invalidIds}
+              perSemCredits={diag?.perSem?.[semester.semester]?.credits}
+              schedules={schedules}
+              onRemoveCustom={removeCustomCourse}
+              onHideCourse={hideCourse}
             />
           ))}
           {planner && (
@@ -1089,6 +1464,338 @@ function MallaInteractiva({ darkMode }) {
             {' '}Herramienta hecha por estudiantes, para estudiantes.
           </span>
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* ============ VALIDACIÓN DEL PLAN: prerrequisitos, carga, componentes y sugerencias ============ */
+function PlanDiagnostics({ darkMode, diag }) {
+  const box = `mb-4 rounded-2xl border p-5 font-sans text-sm transition-colors duration-300 ${
+    darkMode ? 'bg-[#1c2c1f] border-[#f0eee2]/15 text-[#f0eee2]' : 'bg-white border-[#907A67]/25 text-[#191114]'
+  }`;
+  const muted = darkMode ? 'text-[#aeb8a4]' : 'text-[#907A67]';
+  const compExcess = diag.compExcess || [];
+  const compTotals = diag.compTotals;
+  const bar = (actual, max) => {
+    const pct = max > 0 ? Math.min(100, Math.round((actual / max) * 100)) : 0;
+    const over = actual > max;
+    return (
+      <span className="inline-block w-24 h-2 rounded-full bg-black/10 overflow-hidden align-middle" title={`${actual}/${max} CR`}>
+        <span className="block h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: over ? '#e5484d' : '#3B908D' }} />
+      </span>
+    );
+  };
+  const compRow = (label, actual, max, detail) => {
+    const over = actual > max;
+    return (
+      <li className="flex flex-wrap items-center gap-2">
+        <span className={over ? 'font-bold text-red-500' : ''}>{label}: <strong>{actual}/{max} CR</strong>{over ? ' · ¡sobrepasa el máximo!' : ''}</span>
+        {bar(actual, max)}
+        {detail && <span className={muted}>{detail}</span>}
+      </li>
+    );
+  };
+  const niv = diag.nivSummary || { pending: 0, done: 20 };
+  const nivLine = (
+    <li className="flex flex-wrap items-center gap-2">
+      <span>Nivelación (aparte, no cuenta en 165): <strong>{niv.pending}/20 CR pendientes</strong>{niv.pending === 0 ? ' · ¡validada!' : ''}</span>
+      {bar(20 - niv.pending, 20)}
+      <span className={muted}>{niv.pending === 0 ? 'nada pendiente' : `${niv.done}/20 validados`}</span>
+    </li>
+  );
+  const totalErrors = diag.prereqErrors.length + diag.cargaExcesiva.length + diag.cruces.length + compExcess.length;
+  const totalWarns = diag.cargaAlta.length + diag.vacios.length;
+  if (totalErrors === 0 && totalWarns === 0 && diag.cargaBaja.length === 0) {
+    return (
+      <div className={`${box} border-[#82B475]/60`}>
+        <p className="font-bold inline-flex items-center gap-2 text-[#3f6b3a]">
+          <GraduationCap size={16} /> Plan válido por ahora: sin violaciones de prerrequisitos ni sobrecarga.
+        </p>
+        <div className="mt-3 rounded-xl border border-[#3B908D]/30 bg-[#3B908D]/5 p-3">
+          <p className="font-bold text-[13px] mb-1">📊 Créditos por componente (Acuerdo 11 · Acuerdo 003A de 2022: 165 CR)</p>
+          <ul className="m-0 pl-5 text-[13px] flex flex-col gap-1">
+            {compRow('Fundamentación', compTotals.B.total, LIMITES_ACUERDO.B.total, `(OB ${compTotals.B.OB}/${LIMITES_ACUERDO.B.OB} · OP ${compTotals.B.OP}/${LIMITES_ACUERDO.B.OP})`)}
+            {compRow('Disciplinar/Profesional', compTotals.C.total, LIMITES_ACUERDO.C.total, `(OB ${compTotals.C.OB}/${LIMITES_ACUERDO.C.OB} · OP ${compTotals.C.OP}/${LIMITES_ACUERDO.C.OP} · TG ${compTotals.C.TG || 0})`)}
+            {compRow('Libre elección', compTotals.L.total, LIMITES_ACUERDO.L.total, '')}
+            {compRow('Total plan', compTotals.total, LIMITES_ACUERDO.TOTAL, '')}
+            {nivLine}
+          </ul>
+        </div>
+        <p className={`text-xs mt-2 ${muted}`}>Recuerda verificar la oferta real en el SIA: un plan válido en papel puede cruzarse si dos materias solo abren un grupo.</p>
+      </div>
+    );
+  }
+  return (
+    <div className={box}>
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <AlertTriangle size={16} className={totalErrors > 0 ? 'text-red-500' : 'text-[#c08a2e]'} />
+        <h3 className="font-bold text-[15px] m-0">Validación de tu plan {totalErrors > 0 ? `· ${totalErrors} error(es)` : '· solo sugerencias'}</h3>
+        <span className={`text-xs ${muted}`}>Se actualiza cada vez que arrastras una materia. Topes Acuerdo 11: B 51 (15 OB+36 OP) · C 81 (39 OB+42 OP, TG aparte) · L 33 · Total 165.</span>
+      </div>
+      <div className="mb-3 rounded-xl border border-[#3B908D]/30 bg-[#3B908D]/5 p-3">
+        <p className="font-bold text-[13px] mb-1">📊 Créditos por componente (se marca en rojo lo que sobrepasa el máximo):</p>
+        <ul className="m-0 pl-5 text-[13px] flex flex-col gap-1">
+          {compRow('Fundamentación', compTotals.B.total, LIMITES_ACUERDO.B.total, `(OB ${compTotals.B.OB}/${LIMITES_ACUERDO.B.OB} · OP ${compTotals.B.OP}/${LIMITES_ACUERDO.B.OP})`)}
+          {compRow('Disciplinar/Profesional', compTotals.C.total, LIMITES_ACUERDO.C.total, `(OB ${compTotals.C.OB}/${LIMITES_ACUERDO.C.OB} · OP ${compTotals.C.OP}/${LIMITES_ACUERDO.C.OP} · TG ${compTotals.C.TG || 0})`)}
+          {compRow('Libre elección', compTotals.L.total, LIMITES_ACUERDO.L.total, '')}
+          {compRow('Total plan', compTotals.total, LIMITES_ACUERDO.TOTAL, '')}
+          {nivLine}
+        </ul>
+      </div>
+      {compExcess.length > 0 && (
+        <div className="mb-3 rounded-xl border border-red-500/40 bg-red-500/5 p-3">
+          <p className="font-bold text-[13px] mb-1 text-red-500">🚫 Exceso de créditos Acuerdo 11 ({compExcess.length}):</p>
+          <ul className="m-0 pl-5 text-[13px] flex flex-col gap-1">
+            {compExcess.map((e, i) => (
+              <li key={i}><strong>{e.label}</strong> — quita materias/ELEC de ese componente o baja créditos para volver al tope.</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {diag.prereqErrors.length > 0 && (
+        <div className="mb-3 rounded-xl border border-red-500/40 bg-red-500/5 p-3">
+          <p className="font-bold text-[13px] mb-2 text-red-500">⛔ Prerrequisitos violados ({diag.prereqErrors.length}) — el SIA no te dejará inscribir así:</p>
+          <ul className="m-0 pl-5 flex flex-col gap-1.5 text-[13px] leading-snug">
+            {diag.prereqErrors.slice(0, 12).map((e, i) => (
+              <li key={i}>
+                <strong>{e.course.name}</strong> (Sem {e.semCourse}) requiere <strong>{e.prereq.name}</strong> (Sem {e.semPrereq})
+                {e.same ? ' — no pueden ir en el mismo semestre' : ' — el requisito quedó después'}.
+                <span className={muted}> Mueve {e.prereq.code} a un semestre anterior o {e.course.code} a uno posterior.</span>
+              </li>
+            ))}
+          </ul>
+          {diag.prereqErrors.length > 12 && <p className={`text-xs mt-1 ${muted}`}>…y {diag.prereqErrors.length - 12} más.</p>}
+        </div>
+      )}
+      {diag.cargaExcesiva.length > 0 && (
+        <div className="mb-3 rounded-xl border border-red-500/40 bg-red-500/5 p-3">
+          <p className="font-bold text-[13px] mb-1 text-red-500">🔥 Sobrecarga excesiva (más de {CARGA_MAX_RECOMENDADA} créditos):</p>
+          <ul className="m-0 pl-5 text-[13px]">
+            {diag.cargaExcesiva.map(c => <li key={c.sem}>Semestre {c.sem}: <strong>{c.credits} CR</strong> — reparte materias; ni el SIA ni tu salud lo recomiendan.</li>)}
+          </ul>
+        </div>
+      )}
+      {diag.cruces.length > 0 && (
+        <div className="mb-3 rounded-xl border border-[#c08a2e]/60 bg-[#c08a2e]/10 p-3">
+          <p className="font-bold text-[13px] mb-1 text-[#8c6423]">🕒 Cruces de horario detectados ({diag.cruces.length}):</p>
+          <ul className="m-0 pl-5 text-[13px]">
+            {diag.cruces.slice(0, 8).map((c, i) => (
+              <li key={i}>Sem {c.sem}: <strong>{c.a.name}</strong> choca con <strong>{c.b.name}</strong> el {c.day} {minToTime(c.overlapStart)}–{minToTime(c.overlapEnd)}.</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {(diag.cargaAlta.length > 0 || diag.vacios.length > 0) && (
+        <div className="mb-3 rounded-xl border border-[#c08a2e]/50 bg-[#c08a2e]/5 p-3">
+          <p className="font-bold text-[13px] mb-1">⚠️ Advertencias de carga:</p>
+          <ul className="m-0 pl-5 text-[13px] flex flex-col gap-1">
+            {diag.cargaAlta.map(c => <li key={c.sem}>Semestre {c.sem}: <strong>{c.credits} CR (carga alta)</strong> — viable pero pesado; evita juntarlo con trabajo o con materias que desbloquean mucho.</li>)}
+            {diag.vacios.map(s => <li key={s}>Semestre {s} vacío con semestres llenos después — revisa si arrastraste todo sin querer (como en la captura del profe: 57 CR en Sem 1 y 0 en Sem 2-3).</li>)}
+          </ul>
+        </div>
+      )}
+      {diag.cargaBaja.length > 0 && (
+        <div className="rounded-xl border border-[#3B908D]/40 bg-[#3B908D]/5 p-3">
+          <p className="font-bold text-[13px] mb-1 inline-flex items-center gap-1.5"><Lightbulb size={14} /> Sugerencias:</p>
+          <ul className="m-0 pl-5 text-[13px] flex flex-col gap-1">
+            {diag.cargaBaja.map(c => <li key={c.sem}>Semestre {c.sem}: solo {c.credits} CR — buen hueco para adelantar una electiva u optativa liviana.</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============ NIVELACIÓN (20 CR aparte) ============ */
+function NivelacionManager({ darkMode, nivTemplate = [], onHide, onRestore, onRestoreAll }) {
+  const muted = darkMode ? 'text-[#aeb8a4]' : 'text-[#907A67]';
+  const visible = (nivTemplate || []).filter(n => !n.hidden);
+  const hidden = (nivTemplate || []).filter(n => n.hidden);
+  const pendingCr = visible.reduce((a, c) => a + (c.credits || 0), 0);
+  return (
+    <div className={`mb-4 rounded-2xl border p-5 font-sans text-sm ${
+      darkMode ? 'bg-[#1c2c1f] border-[#f0eee2]/15 text-[#f0eee2]' : 'bg-white border-[#907A67]/25 text-[#191114]'
+    }`}>
+      <h3 className="font-bold text-[15px] m-0 mb-1">📐 Nivelación: 20 CR aparte (no cuentan en los 165)</h3>
+      <p className={`text-xs mt-0 mb-3 ${muted}`}>
+        4 CR Matemáticas Básicas (prerrequisito de Cálculo Diferencial) · 12 CR Inglés I–IV (3 CR c/u, en cadena) · 4 CR Lectoescritura (casi nadie la cursa: se suele validar).
+        Si ya las validaste o te eximieron, <strong>ocúltalas</strong> para que no estorben; el validador las descuenta del pendiente.
+        Pendientes ahora: <strong>{pendingCr}/20 CR</strong>.
+        {hidden.length > 0 && (
+          <button onClick={onRestoreAll} className="ml-2 font-bold text-[#3B908D] underline bg-transparent border-none cursor-pointer p-0 text-xs">
+            Restaurar todas
+          </button>
+        )}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {visible.map(c => (
+          <span key={c.id} className={`inline-flex items-center gap-2 text-xs px-2.5 py-1 rounded-full border ${darkMode ? 'border-[#f0eee2]/20' : 'border-[#907A67]/30'}`}>
+            <strong>NIV · {c.credits} CR</strong> {c.name}
+            <button onClick={() => onHide?.(c.id)} title="Ya la validé: ocultar" className="bg-transparent border-none cursor-pointer text-[#3B908D] font-bold p-0 text-xs underline">validé ✓</button>
+          </span>
+        ))}
+        {hidden.map(c => (
+          <span key={c.id} className={`inline-flex items-center gap-2 text-xs px-2.5 py-1 rounded-full border opacity-70 ${darkMode ? 'border-[#f0eee2]/15' : 'border-[#907A67]/25'}`}>
+            <strong>{c.name}</strong> validada
+            <button onClick={() => onRestore?.(c.id)} className="bg-transparent border-none cursor-pointer text-[#3B908D] font-bold p-0 text-xs underline">restaurar</button>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ============ ELECTIVAS PERSONALIZADAS (libre elección) ============ */
+function ElectiveManager({ darkMode, customCourses, onAdd, onRemove, maxSem, libTemplate = [], onHideLib, onRestore, onRestoreAll }) {
+  const [name, setName] = useState('');
+  const [credits, setCredits] = useState(2);
+  const [semester, setSemester] = useState(9);
+  const inputCls = `font-sans text-sm px-3 py-2 rounded-xl border outline-none focus:border-[#3B908D] ${
+    darkMode ? 'bg-[#0d160f] border-[#f0eee2]/20 text-[#f0eee2]' : 'bg-white border-[#907A67]/30 text-[#191114]'
+  }`;
+  const muted = darkMode ? 'text-[#aeb8a4]' : 'text-[#907A67]';
+  const submit = (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    onAdd({ name, credits, semester });
+    setName('');
+  };
+  const visibleLib = (libTemplate || []).filter(l => !l.hidden);
+  const hiddenLib = (libTemplate || []).filter(l => l.hidden);
+  const libCredits = visibleLib.reduce((a, c) => a + (c.credits || 0), 0);
+  return (
+    <div className={`mb-4 rounded-2xl border p-5 font-sans text-sm ${
+      darkMode ? 'bg-[#1c2c1f] border-[#f0eee2]/15 text-[#f0eee2]' : 'bg-white border-[#907A67]/25 text-[#191114]'
+    }`}>
+      <h3 className="font-bold text-[15px] m-0 mb-1">➕ Mis electivas / libre elección</h3>
+      <p className={`text-xs mt-0 mb-3 ${muted}`}>
+        Agrega las que te gustaría ver: Explora UNAL, Astronomía para todos, Cátedra, deportes, etc. Quedan marcadas como ELEC y las puedes arrastrar entre semestres o borrar.
+        La plantilla trae 9 Libre Elección (33 CR). Si estorban o quieres otros créditos, <strong>bórralas aquí o desde la tarjeta</strong> y reemplázalas con las tuyas; el validador avisa si te pasas de 33 CR.
+      </p>
+      <form onSubmit={submit} className="flex flex-wrap gap-2 items-end">
+        <label className="flex flex-col gap-1 grow min-w-[200px]">
+          <span className="text-xs font-semibold">Nombre de la electiva</span>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Astronomía para todos" maxLength={80} className={inputCls} />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-semibold">Créditos</span>
+          <select value={credits} onChange={e => setCredits(e.target.value)} className={inputCls}>
+            {[1, 2, 3, 4, 5, 6].map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-semibold">Semestre</span>
+          <select value={semester} onChange={e => setSemester(e.target.value)} className={inputCls}>
+            {Array.from({ length: Math.max(maxSem, 10) }, (_, i) => i + 1).map(s => <option key={s} value={s}>Sem {s}</option>)}
+          </select>
+        </label>
+        <button type="submit" className="font-sans text-sm font-semibold px-4 py-2 rounded-xl text-white bg-gradient-to-r from-[#3B908D] to-[#82B475] cursor-pointer border-none">
+          Agregar
+        </button>
+      </form>
+      {customCourses.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {customCourses.map(c => (
+            <span key={c.id} className={`inline-flex items-center gap-2 text-xs px-2.5 py-1 rounded-full border ${darkMode ? 'border-[#f0eee2]/20' : 'border-[#907A67]/30'}`}>
+              <strong>ELEC · {c.credits} CR</strong> {c.name}
+              <button onClick={() => onRemove(c.id)} title="Borrar mi electiva" className="bg-transparent border-none cursor-pointer text-red-500 font-bold p-0 text-sm leading-none">× borrar</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="mt-4 pt-3 border-t border-dashed border-[#907A67]/30">
+        <p className="text-xs font-bold m-0 mb-2">
+          Plantilla oficial LIB ({visibleLib.length} visibles · {libCredits} CR){hiddenLib.length > 0 && ` · ${hiddenLib.length} ocultas`}
+          {hiddenLib.length > 0 && (
+            <button onClick={onRestoreAll} className="ml-2 font-bold text-[#3B908D] underline bg-transparent border-none cursor-pointer p-0 text-xs">
+              Restaurar todas
+            </button>
+          )}
+        </p>
+        {visibleLib.length === 0 && <p className={`text-xs m-0 ${muted}`}>Ocultaste toda la plantilla LIB. Tu conteo de Libre Elección ahora depende solo de tus ELEC.</p>}
+        <div className="flex flex-wrap gap-2 mt-2">
+          {visibleLib.map(c => (
+            <span key={c.id} className={`inline-flex items-center gap-2 text-xs px-2.5 py-1 rounded-full border ${darkMode ? 'border-[#f0eee2]/20' : 'border-[#907A67]/30'}`}>
+              <strong>LIB · {c.credits} CR</strong> Sem {c.home} ({c.id})
+              <button onClick={() => onHideLib?.(c.id)} title={`Borrar ${c.id} de tu plan`} className="bg-transparent border-none cursor-pointer text-red-500 font-bold p-0 text-xs underline">borrar</button>
+            </span>
+          ))}
+        </div>
+        {hiddenLib.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {hiddenLib.map(c => (
+              <span key={c.id} className={`inline-flex items-center gap-2 text-xs px-2.5 py-1 rounded-full border opacity-70 ${darkMode ? 'border-[#f0eee2]/15' : 'border-[#907A67]/25'}`}>
+                <strong>{c.id} · {c.credits} CR</strong> oculta
+                <button onClick={() => onRestore?.(c.id)} className="bg-transparent border-none cursor-pointer text-[#3B908D] font-bold p-0 text-xs underline">restaurar</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============ REVISOR DE OFERTA Y CRUCES (SIA) ============ */
+function ScheduleChecker({ darkMode, semesters, schedules, diag, onAddSlot, onRemoveSlot }) {
+  const [semSel, setSemSel] = useState(() => semesters.find(s => s.courses.length > 0)?.semester || 1);
+  const [forms, setForms] = useState({});
+  const sem = semesters.find(s => s.semester === semSel) || semesters[0];
+  const muted = darkMode ? 'text-[#aeb8a4]' : 'text-[#907A67]';
+  const setForm = (cid, patch) => setForms(prev => ({ ...prev, [cid]: { day: 'Lun', start: '08:00', end: '10:00', ...(prev[cid] || {}), ...patch } }));
+  const crucesSem = (diag?.cruces || []).filter(c => c.sem === semSel);
+  return (
+    <div className={`mb-8 rounded-2xl border p-5 font-sans text-sm ${
+      darkMode ? 'bg-[#1c2c1f] border-[#f0eee2]/15 text-[#f0eee2]' : 'bg-white border-[#907A67]/25 text-[#191114]'
+    }`}>
+      <h3 className="font-bold text-[15px] m-0 mb-1">🕒 Revisar oferta y cruces de horario</h3>
+      <p className={`text-xs mt-0 mb-3 ${muted}`}>
+        El SIA a veces abre <strong>un solo grupo</strong> por materia y dos materias se cruzan. Copia aquí los horarios de la oferta vigente (Buscador de cursos / SIA) y te avisamos si tu plan es imposible.
+        Esto no reemplaza verificar en el SIA antes de inscribir.
+      </p>
+      <div className="flex flex-wrap gap-2 mb-4 items-center">
+        <span className="text-xs font-semibold">Semestre a revisar:</span>
+        <select value={semSel} onChange={e => setSemSel(Number(e.target.value))}
+          className={`text-sm px-3 py-2 rounded-xl border outline-none cursor-pointer ${darkMode ? 'bg-[#0d160f] border-[#f0eee2]/20 text-[#f0eee2]' : 'bg-white border-[#907A67]/30 text-[#191114]'}`}>
+          {semesters.filter(s => s.courses.length > 0).map(s => <option key={s.semester} value={s.semester}>{s.semester === 0 ? 'Nivelación' : `Sem ${s.semester}`} · {s.courses.length} mats</option>)}
+        </select>
+        {crucesSem.length > 0
+          ? <span className="text-xs font-bold text-red-500">⛔ {crucesSem.length} cruce(s) en este semestre</span>
+          : <span className="text-xs text-[#3f6b3a]">✓ Sin cruces registrados en este semestre</span>}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {(sem?.courses || []).map(c => {
+          const slots = schedules[c.id] || [];
+          const f = forms[c.id] || { day: 'Lun', start: '08:00', end: '10:00' };
+          return (
+            <div key={c.id} className={`rounded-xl border p-3 ${darkMode ? 'border-[#f0eee2]/15' : 'border-[#907A67]/25'}`}>
+              <p className="font-bold text-[13px] m-0">{c.code} · {c.name}</p>
+              {slots.length === 0 && <p className={`text-xs m-0 mt-1 ${muted}`}>Sin horario registrado (no se revisa).</p>}
+              {slots.map((s, i) => (
+                <p key={i} className="text-xs m-0 mt-1 flex items-center gap-2">
+                  <span>{s.day} {minToTime(s.start)}–{minToTime(s.end)}</span>
+                  <button onClick={() => onRemoveSlot(c.id, i)} className="bg-transparent border-none cursor-pointer text-red-500 text-xs underline p-0">quitar</button>
+                </p>
+              ))}
+              <div className="flex flex-wrap gap-1.5 mt-2 items-center">
+                <select value={f.day} onChange={e => setForm(c.id, { day: e.target.value })}
+                  className={`text-xs px-2 py-1.5 rounded-lg border outline-none ${darkMode ? 'bg-[#0d160f] border-[#f0eee2]/20' : 'bg-white border-[#907A67]/30'}`}>
+                  {DIAS_SEMANA.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <input type="time" value={f.start} onChange={e => setForm(c.id, { start: e.target.value })}
+                  className={`text-xs px-2 py-1.5 rounded-lg border outline-none ${darkMode ? 'bg-[#0d160f] border-[#f0eee2]/20' : 'bg-white border-[#907A67]/30'}`} />
+                <input type="time" value={f.end} onChange={e => setForm(c.id, { end: e.target.value })}
+                  className={`text-xs px-2 py-1.5 rounded-lg border outline-none ${darkMode ? 'bg-[#0d160f] border-[#f0eee2]/20' : 'bg-white border-[#907A67]/30'}`} />
+                <button
+                  onClick={() => { if (!onAddSlot(c.id, f.day, f.start, f.end)) window.alert('Revisa el día y las horas (fin debe ser mayor que inicio).'); }}
+                  className="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-[#3B908D] text-white border-none cursor-pointer">
+                  + franja
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1189,7 +1896,7 @@ function MallaDetalleCurso({ course, tip, opts, showOptativas, unlockCount, dark
         </div>
       )}
 
-      {showOptativas && opts.length === 0 && tip.tipo !== 'L' && tip.tipo !== 'TG' && (
+      {showOptativas && opts.length === 0 && tip.tipo !== 'L' && tip.tipo !== 'TG' && tip.tipo !== 'NIV' && (
         <p className={`font-sans text-xs mt-4 ${darkMode ? 'text-[#aeb8a4]' : 'text-[#907A67]'}`}>
           No tenemos equivalencias registradas para esta asignatura. Al ser un plan con opciones, consulta las subagrupaciones vigentes en el SIA.
         </p>
@@ -1208,7 +1915,7 @@ function MallaDetalleCurso({ course, tip, opts, showOptativas, unlockCount, dark
   );
 }
 
-function MallaSemestre({ semester, semIdx, darkMode, showOptativas, onSelectCourse, getCourseStatus, statusStyles, courseRefs, planner, semMap, dropActive, onDropSemester, onOverSemester }) {
+function MallaSemestre({ semester, semIdx, darkMode, showOptativas, onSelectCourse, getCourseStatus, statusStyles, courseRefs, planner, semMap, dropActive, onDropSemester, onOverSemester, invalidIds, perSemCredits, schedules, onRemoveCustom, onHideCourse }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -1228,6 +1935,9 @@ function MallaSemestre({ semester, semIdx, darkMode, showOptativas, onSelectCour
   }, [semIdx, planner]);
 
   const semesterCredits = semester.courses.reduce((acc, c) => acc + c.credits, 0);
+  const isNiv = semester.semester === 0;
+  const creditBad = planner && !isNiv && semesterCredits > CARGA_MAX_RECOMENDADA;
+  const creditHigh = planner && !isNiv && !creditBad && semesterCredits >= CARGA_ALTA_DESDE;
 
   return (
     <div
@@ -1237,16 +1947,19 @@ function MallaSemestre({ semester, semIdx, darkMode, showOptativas, onSelectCour
       onDrop={planner ? (e) => { e.preventDefault(); onDropSemester(e.dataTransfer.getData('text/plain'), semester.semester); } : undefined}
       className={`malla-semester w-56 shrink-0 flex flex-col gap-5 rounded-xl transition-colors duration-200 ${planner ? 'is-visible' : ''} ${
         planner && dropActive ? 'bg-[#3B908D]/15 ring-2 ring-[#3B908D]/60' : ''
-      }`}
+      }${isNiv ? ' ring-1 ring-dashed ring-[#9a9a9a]/50' : ''}`}
     >
       <div className={`text-center font-sans font-bold py-2 rounded-lg border z-10 relative ${
         darkMode ? 'text-[#82B475] bg-[#1c2c1f] border-[#f0eee2]/20' : 'text-[#18514A] bg-[#82B475]/20 border-[#82B475]/40'
       }`}>
-        Semestre {semester.semester}
+        {isNiv ? 'Nivelación' : `Semestre ${semester.semester}`}
       </div>
-      {planner && (
-        <div className={`text-center font-sans text-xs font-semibold -mt-3 ${darkMode ? 'text-[#aeb8a4]' : 'text-[#907A67]'}`}>
-          {semesterCredits} CR
+      {(planner || true) && (
+        <div className={`text-center font-sans text-xs font-semibold -mt-3 flex items-center justify-center gap-1 ${
+          creditBad ? 'text-red-500' : creditHigh ? 'text-[#c08a2e]' : (darkMode ? 'text-[#aeb8a4]' : 'text-[#907A67]')
+        }`} title={isNiv ? 'Nivelación: 20 CR aparte, no cuentan en los 165' : creditBad ? `Sobrecarga: más de ${CARGA_MAX_RECOMENDADA} créditos` : creditHigh ? 'Carga alta' : 'Créditos del semestre'}>
+          {creditBad && <AlertTriangle size={12} />}{creditHigh && !creditBad && <AlertTriangle size={12} />}
+          {semesterCredits} CR{isNiv ? ' · aparte' : creditBad ? ' · ¡excesivo!' : creditHigh ? ' · alta' : ''}
         </div>
       )}
 
@@ -1258,12 +1971,17 @@ function MallaSemestre({ semester, semIdx, darkMode, showOptativas, onSelectCour
         const isOpt = tip.tipo === 'OP';
         const here = planner && semMap ? (semMap[course.id] ?? semester.semester) : semester.semester;
         const latePrereqs = planner && semMap
-          ? course.prereqs.filter(pid => semMap[pid] !== undefined && semMap[pid] >= here)
+          ? course.prereqs.filter(pid => semMap[pid] !== undefined && semMap[pid] >= here && !(semMap[pid] === 0 && here === 0))
           : [];
+        const isInvalid = planner && invalidIds?.has(course.id);
+        const isCustom = Boolean(course.custom);
+        const isLib = !isCustom && String(course.id || '').startsWith('LIB');
+        const isNivCourse = String(course.id || '').startsWith('NIV-');
+        const slotCount = (schedules?.[course.id] || []).length;
 
         return (
+          <div key={course.id} className="relative">
           <button
-            key={course.id}
             ref={el => courseRefs.current[course.id] = el}
             draggable={planner}
             onDragStart={planner ? (e) => { e.dataTransfer.setData('text/plain', course.id); e.dataTransfer.effectAllowed = 'move'; } : undefined}
@@ -1271,19 +1989,19 @@ function MallaSemestre({ semester, semIdx, darkMode, showOptativas, onSelectCour
             title={`${course.name} · Componente: ${(COMP_META[tip.comp] || COMP_META.C).label} · ${TIPO_META[tip.tipo].label} · ${tip.agrup}`}
             className={`text-left p-3 rounded-xl border transition-all duration-300 block w-full ${planner ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${style}${
               showOptativas && OPTATIVAS_DATA[course.id]?.length > 0 ? ' ring-2 ring-[#8F7CC0]/60' : ''
-            }`}
+            }${isInvalid ? ' ring-2 ring-red-500 border-red-500' : ''}`}
           >
             <div className="flex justify-between items-center mb-1.5 opacity-90">
-              <span className="font-mono text-[10.5px] tracking-wider">{course.code}</span>
+              <span className="font-mono text-[10.5px] tracking-wider">{isCustom ? 'ELEC' : isNivCourse ? 'NIV' : course.code}</span>
               <span className={`font-sans text-[10px] font-bold px-1.5 py-0.5 rounded-sm ${darkMode ? 'bg-white/10' : 'bg-black/10'}`}>
                 {course.credits} CR
               </span>
             </div>
             <h4 className="font-sans font-semibold text-sm leading-tight m-0">{course.name}</h4>
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: isOpt ? '#8F7CC0' : compColor }}></span>
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: isCustom ? '#c08a2e' : isNivCourse ? '#9a9a9a' : isOpt ? '#8F7CC0' : compColor }}></span>
               <span className="font-sans text-[9.5px] font-semibold tracking-wide uppercase opacity-75">
-                {isOpt ? 'OPT' : tip.comp} · {TIPO_META[tip.tipo].label}
+                {isCustom ? 'ELEC · Libre elección' : isNivCourse ? 'NIV · Nivelación' : isOpt ? 'OPT' : tip.comp} · {isCustom ? 'Mi electiva' : TIPO_META[tip.tipo].label}
               </span>
               {OPTATIVAS_DATA[course.id]?.length > 0 && showOptativas && (
                 <span
@@ -1293,16 +2011,66 @@ function MallaSemestre({ semester, semIdx, darkMode, showOptativas, onSelectCour
                   +{OPTATIVAS_DATA[course.id].length} EQ
                 </span>
               )}
+              {slotCount > 0 && planner && (
+                <span title={`${slotCount} franja(s) de horario registradas`} className="font-sans text-[9px] font-bold px-1 rounded-sm bg-[#3B908D]/15 text-[#3B908D] ml-auto">
+                  🕒 {slotCount}
+                </span>
+              )}
             </div>
             {latePrereqs.length > 0 && (
               <span
-                className="mt-1.5 inline-flex items-center gap-1 font-sans text-[9.5px] font-bold text-[#c08a2e]"
-                title={`Requisito en semestre igual o posterior: ${latePrereqs.join(', ')}`}
+                className="mt-1.5 inline-flex items-center gap-1 font-sans text-[9.5px] font-bold text-red-500"
+                title={`Requisito en semestre igual o posterior: ${latePrereqs.join(', ')} — el SIA no permite inscribir así`}
               >
-                <AlertTriangle size={11} /> Requisito después
+                <AlertTriangle size={11} /> ⛔ Prerrequisito violado
+              </span>
+            )}
+            {isCustom && planner && (
+              <span className="mt-1.5 block font-sans text-[9.5px] text-[#907A67]">
+                Electiva propia · arrástrala o{' '}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => { e.stopPropagation(); onRemoveCustom?.(course.id); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onRemoveCustom?.(course.id); } }}
+                  className="underline font-bold text-red-500 cursor-pointer"
+                >
+                  borrar
+                </span>
+              </span>
+            )}
+            {isLib && planner && (
+              <span className="mt-1.5 block font-sans text-[9.5px] text-[#907A67]">
+                Plantilla {course.id} · {course.credits} CR ·{' '}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => { e.stopPropagation(); onHideCourse?.(course.id); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onHideCourse?.(course.id); } }}
+                  className="underline font-bold text-red-500 cursor-pointer"
+                  title="Borrar esta Libre Elección de tu plan para poner una propia con otros créditos"
+                >
+                  borrar
+                </span>
+              </span>
+            )}
+            {isNivCourse && planner && (
+              <span className="mt-1.5 block font-sans text-[9.5px] text-[#907A67]">
+                Nivelación · no cuenta en 165 ·{' '}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => { e.stopPropagation(); onHideCourse?.(course.id); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onHideCourse?.(course.id); } }}
+                  className="underline font-bold text-[#3B908D] cursor-pointer"
+                  title="Ya la validé: ocultar de mi plan"
+                >
+                  validé ✓
+                </span>
               </span>
             )}
           </button>
+          </div>
         );
       })}
     </div>
